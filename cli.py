@@ -1,5 +1,5 @@
 """
-Altchgamer — CLI для диагностики болезни Альцгеймера.
+Alzheimer — CLI для диагностики болезни Альцгеймера.
 
 Команды:
   python cli.py generate-synthetic   # создать тестовые данные OASIS-3

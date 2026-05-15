@@ -61,7 +61,7 @@ def build(output="results/report.pptx"):
 
     # ── 1. Титульный слайд ────────────────────────────────────────────
     sl = _slide(prs)
-    _title(sl, "Altchgamer", top=Inches(1.8), size=Pt(36))
+    _title(sl, "Alzheimer", top=Inches(1.8), size=Pt(36))
     _title(sl, "Мультимодальная ранняя диагностика\nболезни Альцгеймера",
            top=Inches(2.7), size=Pt(24), bold=False)
     _text(sl,

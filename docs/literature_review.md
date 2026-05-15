@@ -2,60 +2,111 @@
 
 ## 1. Болезнь Альцгеймера: молекулярные механизмы
 
-Болезнь Альцгеймера (БА) — нейродегенеративное заболевание, характеризующееся накоплением амилоид-бета бляшек и нейрофибриллярных клубков тау-белка. На молекулярном уровне БА проявляется нарушением синаптической передачи, митохондриальной дисфункцией и нейровоспалением.
+Болезнь Альцгеймера (БА) — нейродегенеративное заболевание, характеризующееся
+накоплением амилоид-бета бляшек и нейрофибриллярных клубков тау-белка.
+На молекулярном уровне БА проявляется нарушением синаптической передачи,
+митохондриальной дисфункцией и нейровоспалением.
 
 **Ключевые работы:**
-- Selkoe D.J., Hardy J. (2016). The amyloid hypothesis of Alzheimer's disease at 25 years. *EMBO Mol Med*, 8(6), 595–608.
-- Jack C.R. et al. (2018). NIA-AA Research Framework: biomarkers of Alzheimer's continuum. *Alzheimers Dement*, 14(4), 535–562.
+- Selkoe D.J., Hardy J. (2016). The amyloid hypothesis of Alzheimer's disease
+  at 25 years. *EMBO Mol Med*, 8(6), 595–608.
+- Jack C.R. et al. (2018). NIA-AA Research Framework: biomarkers of Alzheimer's
+  continuum. *Alzheimers Dement*, 14(4), 535–562.
 
-## 2. Датасет GSE138852
+## 2. Датасет OASIS-3
 
-Mathys H. et al. (2019). Single-cell transcriptomic analysis of Alzheimer's disease. *Nature*, 570, 332–337.
+LaMontagne P.J. et al. (2019). OASIS-3: Longitudinal Neuroimaging, Clinical,
+and Cognitive Dataset for Normal Aging and Alzheimer's Disease.
+*medRxiv*, doi: 10.1101/2019.12.13.19014902.
 
-Датасет содержит одноклеточные РНК-профили (scRNA-seq) 80 пациентов (48 с БА, 32 контрольных) из энторинальной коры головного мозга. Выделено 8 основных типов клеток: нейроны, астроциты, микроглия, олигодендроциты и др. Обнаружено, что наибольшее число DEG приходится на нейроны и микроглию.
+Датасет содержит данные 1378 участников (>55 лет) под наблюдением центра
+Knight ADRC (Вашингтонский университет):
+- Структурные МРТ (T1-weighted)
+- FreeSurfer морфометрия (объёмы, толщина коры)
+- Когнитивные тесты: CDR, MMSE
+- Генотипирование APOE
+- Продольные визиты: до 10+ лет наблюдения
 
-## 3. Дифференциальный анализ экспрессии (DEG)
+## 3. МРТ-биомаркеры ранней стадии AD
 
-Стандартный подход для scRNA-seq — непараметрический критерий Вилкоксона–Манна–Уитни с поправкой Бенджамини–Хохберга на множественные сравнения (FDR). Данный метод не требует нормальности распределений и устойчив к нулевой инфляции, типичной для scRNA-seq данных.
+Атрофия гиппокампа — один из самых ранних и надёжных маркеров:
+- Гиппокамп теряет 3–5% объёма в год при MCI (Jack et al., 2010)
+- Энторинальная кора атрофируется раньше гиппокампа (Braak stages I–II)
 
-**Ключевые работы:**
-- Luecken M.D., Theis F.J. (2019). Current best practices in single-cell RNA-seq analysis. *Mol Syst Biol*, 15(6), e8746.
-- Benjamini Y., Hochberg Y. (1995). Controlling the false discovery rate. *J R Stat Soc B*, 57(1), 289–300.
-
-## 4. Машинное обучение для классификации AD
-
-Нейронные сети показали высокую точность при классификации AD/контроль по транскриптомным данным. MLP-архитектуры с регуляризацией Dropout эффективны при числе признаков ~500 генов.
-
-**Ключевые работы:**
-- Miled N. et al. (2022). Deep learning for AD classification from RNA-seq. *Front Neurosci*.
-- Srivastava N. et al. (2014). Dropout: a simple way to prevent neural networks from overfitting. *JMLR*, 15(1), 1929–1958.
-
-## 5. Предобученные эмбеддинги генов: Gene2Vec
-
-Du J. et al. (2019). Gene2vec: distributed representation of genes based on co-expression. *BMC Genomics*, 20(S5), 82.
-
-Gene2Vec применяет архитектуру word2vec к матрицам совместной экспрессии генов, получая 200-мерные векторы для ~16 000 генов человека. Эти векторы отражают биологическую близость генов и могут использоваться как признаки в downstream-задачах классификации.
-
-Применение Gene2Vec как третьей головы ансамбля позволяет внедрить биологически-осмысленные признаки без дополнительного обучения на задаче — это пример transfer learning в биомедицинском контексте.
-
-## 6. Мультимодальные методы
-
-Интеграция нескольких источников данных повышает точность предсказания AD. Исследования показывают, что комбинация транскриптомики с клеточным составом и геномными данными даёт статистически значимое улучшение по сравнению с одной модальностью.
+FreeSurfer (Fischl B., 2012) автоматически сегментирует 68 корковых регионов
+и 34 подкорковых структуры, что позволяет извлекать ROI-признаки без ручной
+разметки.
 
 **Ключевые работы:**
-- Nguyen T. et al. (2020). Multi-modal deep learning for AD diagnosis from multiple data types. *Sci Rep*, 10, 13141.
-- Abdi H. et al. (2021). Cell-type composition as a predictor of disease state. *Cell Rep*, 34(7).
+- Jack C.R. et al. (2010). Hypothetical model of dynamic biomarkers.
+  *Lancet Neurol*, 9(1), 119–128.
+- Fischl B. (2012). FreeSurfer. *NeuroImage*, 62(2), 774–781.
+- Dickerson B.C. et al. (2011). Entorhinal cortex atrophy as an early marker
+  of AD. *Annals of Neurology*, 69(2), 283–291.
 
-## 7. Ансамблевые методы в биомедицинском ML
+## 4. Клинические биомаркеры
 
-Ensemble-методы (усреднение вероятностей независимо обученных моделей) систематически превосходят одиночные модели за счёт уменьшения дисперсии ошибки. В биомедицинских задачах это особенно важно из-за ограниченного размера выборок.
+**MMSE (Mini-Mental State Examination):** стандартизированный тест когниции
+(0–30 баллов). Норма ≥26, MCI: 20–25, деменция: <20. Широко применяется
+как первичный скрининг.
 
-**Ключевые работы:**
-- Kuncheva L.I. (2014). Combining Pattern Classifiers. *Wiley*.
-- Zhou Z.H. (2012). Ensemble Methods: Foundations and Algorithms. *CRC Press*.
+**CDR (Clinical Dementia Rating):** многомерная оценка деменции (0–3).
+CDR 0 = норма, CDR 0.5 = сомнительная деменция, CDR 1 = лёгкая.
 
-## 8. Анализ обогащения (Enrichr)
+**APOE ε4:** главный генетический фактор риска AD. Носители одной копии имеют
+3-кратный риск, двух копий — 8-кратный (Corder E.H. et al., 1993).
 
-Kuleshov M.V. et al. (2016). Enrichr: a comprehensive gene set enrichment analysis web server. *Nucleic Acids Res*, 44(W1), W90–W97.
+## 5. Мультимодальные методы диагностики AD
 
-Enrichr сопоставляет список DEG-генов с базами GO и KEGG, выявляя биологические процессы и метаболические пути, статистически обогащённые среди дифференциально экспрессированных генов.
+Объединение МРТ и клинических данных улучшает точность по сравнению
+с однородными методами:
+
+- Zhang D. et al. (2011). Multimodal classification of Alzheimer's disease
+  combining structural MRI, PET and CSF biomarkers.
+  *NeuroImage*, 55(3), 856–867. AUC = 0.93
+
+- Liu M. et al. (2018). Multi-modality cascaded convolutional neural networks
+  for Alzheimer's disease diagnosis.
+  *Neuroinformatics*, 16, 295–308.
+
+- Spasov S. et al. (2019). A parameter-efficient deep learning approach to
+  predict conversion from MCI to Alzheimer's disease.
+  *NeuroImage*, 189, 276–287. AUC = 0.925
+
+## 6. Gated Fusion в мультимодальном обучении
+
+Gated fusion позволяет модели динамически взвешивать вклад каждой модальности:
+
+- Arevalo J. et al. (2017). Gated Multimodal Units for Information Fusion.
+  *arXiv*, 1702.01992. — первая применение gate для мультимодального фьюжена
+
+- Kiela D. et al. (2018). Dynamic Meta-Embeddings for Improved Sentence
+  Representations. *EMNLP*. — gate-механизм для слияния пространств
+
+Биологическое обоснование для AD: на ранней стадии (MCI) МРТ-изменения
+могут быть ещё незначительны, тогда как клинические симптомы более выражены —
+gate позволяет автоматически перераспределить доверие.
+
+## 7. Предотвращение переобучения в биомедицинских данных
+
+Основная проблема — малый размер выборки при высокой размерности:
+
+- Varoquaux G. (2018). Cross-validation failure: small sample sizes lead to
+  large error bars. *NeuroImage*, 180, 68–77.
+
+- Woo C.W. et al. (2017). Cluster-extent based thresholding in fMRI analyses:
+  Pitfalls and recommendations. *NeuroImage*, 91, 412–419.
+
+**Решения применяемые в проекте:**
+  - GroupShuffleSplit по subject_id (donor-level split)
+  - Weighted CrossEntropyLoss (дисбаланс классов)
+  - Dropout (0.3) + Weight Decay (1e-4)
+  - BatchNorm в MRIEncoder (стабилизация обучения)
+
+## 8. Исследовательский анализ (scRNA-seq GSE138852)
+
+Mathys H. et al. (2019). Single-cell transcriptomic analysis of Alzheimer's disease.
+*Nature*, 570, 332–337.
+
+Датасет содержит scRNA-seq профили 80 пациентов (48 с БА, 32 контрольных)
+из энторинальной коры. Наибольшее число DEG — в нейронах и микроглии.

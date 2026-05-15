@@ -1,11 +1,12 @@
 """
-Altchgamer — CLI-приложение для анализа болезни Альцгеймера.
+Altchgamer — CLI для диагностики болезни Альцгеймера.
 
-Использование:
-  python cli.py download            # скачать данные GSE138852
-  python cli.py analyze             # полный анализ (DEG + визуализация + ансамбль + Enrichr)
-  python cli.py classify            # только классификатор (нужен предыдущий analyze)
-  python cli.py report              # сгенерировать PowerPoint-отчёт
+Команды:
+  python cli.py generate-synthetic   # создать тестовые данные OASIS-3
+  python cli.py classify-oasis       # мультимодальный классификатор (МРТ + клиника)
+  python cli.py report               # сгенерировать PowerPoint-отчёт
+  python cli.py download             # скачать данные GSE138852 (исследовательский анализ)
+  python cli.py analyze              # DEG-анализ на GSE138852
   python cli.py --help
 """
 
@@ -16,28 +17,86 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-# ── Команда: download ─────────────────────────────────────────────────
+# ── generate-synthetic ────────────────────────────────────────────────
+
+def cmd_generate_synthetic(args):
+    from generate_synthetic_oasis import generate
+    _banner("Генерация синтетических данных OASIS-3")
+    generate()
+    print("\nДалее запустите: python cli.py classify-oasis")
+
+
+# ── classify-oasis ────────────────────────────────────────────────────
+
+def cmd_classify_oasis(args):
+    import numpy as np
+    from data_loader_oasis       import OASISLoader
+    from multimodal_classifier   import MultimodalClassifier
+    from visualizer_multimodal   import MultimodalVisualizer
+    from config import RESULTS_FOLDER
+
+    os.makedirs(RESULTS_FOLDER, exist_ok=True)
+    _banner("Мультимодальная диагностика AD: МРТ + клинические данные")
+
+    print("\n[1/4] Загрузка данных OASIS-3")
+    loader = OASISLoader()
+    loader.load()
+    loader.print_summary()
+    X_mri, X_clin, y, groups, mri_cols, clin_cols = loader.get_feature_matrices()
+
+    print("\n[2/4] Обучение мультимодальной сети (Gated Fusion)")
+    clf     = MultimodalClassifier()
+    metrics = clf.train(X_mri, X_clin, y, groups,
+                        mri_names=mri_cols, clin_names=clin_cols)
+
+    print("\n[3/4] Визуализация")
+    viz = MultimodalVisualizer()
+    viz.plot_training_loss(metrics["losses"])
+    viz.plot_multihead_roc(
+        metrics["y_true"],
+        metrics["probs"],
+        metrics["probs_mri_only"],
+        metrics["probs_clin_only"],
+    )
+    viz.plot_confusion_matrix(metrics["y_true"], metrics["preds"])
+    viz.plot_gate_weights(metrics["gates"], metrics["y_true"])
+
+    # Важность МРТ-признаков: std активаций по тестовой выборке
+    importances = np.std(metrics["embeddings"][:, :len(mri_cols)], axis=0)
+    if len(importances) != len(mri_cols):
+        importances = np.ones(len(mri_cols))
+    viz.plot_roi_importance(mri_cols, importances)
+
+    viz.plot_biomarker_trajectory(loader.df)
+    viz.plot_fusion_umap(metrics["embeddings"], metrics["y_true"])
+
+    print("\n[4/4] Результаты")
+    print(f"  Accuracy:  {metrics['accuracy']:.3f}")
+    print(f"  ROC-AUC:   {metrics['roc_auc']:.3f}")
+    _done(RESULTS_FOLDER)
+
+
+# ── download ──────────────────────────────────────────────────────────
 
 def cmd_download(args):
     import download_data
     download_data.main()
 
 
-# ── Команда: analyze ──────────────────────────────────────────────────
+# ── analyze ───────────────────────────────────────────────────────────
 
 def cmd_analyze(args):
     import pandas as pd
-    from data_loader        import DataLoader
-    from preprocessor       import Preprocessor
-    from gene_analyzer      import GeneAnalyzer
-    from visualizer         import Visualizer
+    from data_loader         import DataLoader
+    from preprocessor        import Preprocessor
+    from gene_analyzer       import GeneAnalyzer
+    from visualizer          import Visualizer
     from ensemble_classifier import EnsembleClassifier
     from enrichment_analysis import EnrichmentAnalyzer
     from config import RESULTS_FOLDER
 
     os.makedirs(RESULTS_FOLDER, exist_ok=True)
-
-    _banner("Анализ экспрессии генов при болезни Альцгеймера")
+    _banner("Исследовательский анализ scRNA-seq (GSE138852)")
 
     print("\n[1/6] Загрузка данных")
     loader = DataLoader()
@@ -72,7 +131,7 @@ def cmd_analyze(args):
         viz.heatmap(adata, deg_results[ct], ct)
     viz.umap_plot(adata)
 
-    print("\n[5/6] Мультимодальный ансамблевый классификатор")
+    print("\n[5/6] Ансамблевый классификатор")
     clf     = EnsembleClassifier()
     metrics = clf.train(adata, deg_results)
     _print_metrics(metrics)
@@ -86,33 +145,7 @@ def cmd_analyze(args):
     _done(RESULTS_FOLDER)
 
 
-# ── Команда: classify ─────────────────────────────────────────────────
-
-def cmd_classify(args):
-    import pandas as pd
-    from data_loader         import DataLoader
-    from preprocessor        import Preprocessor
-    from gene_analyzer       import GeneAnalyzer
-    from ensemble_classifier import EnsembleClassifier
-    from config import RESULTS_FOLDER
-
-    os.makedirs(RESULTS_FOLDER, exist_ok=True)
-    _banner("Мультимодальный классификатор (отдельный запуск)")
-
-    loader = DataLoader()
-    adata  = loader.load()
-    adata  = Preprocessor().preprocess(adata)
-
-    analyzer    = GeneAnalyzer(adata)
-    deg_results = analyzer.run_all()
-
-    clf     = EnsembleClassifier()
-    metrics = clf.train(adata, deg_results)
-    _print_metrics(metrics)
-    _done(RESULTS_FOLDER)
-
-
-# ── Команда: report ───────────────────────────────────────────────────
+# ── report ────────────────────────────────────────────────────────────
 
 def cmd_report(args):
     import build_presentation
@@ -145,34 +178,39 @@ def _done(folder):
 def main():
     parser = argparse.ArgumentParser(
         prog="altchgamer",
-        description="Анализ болезни Альцгеймера: DEG + мультимодальный ансамбль + Enrichr",
+        description="Мультимодальная диагностика болезни Альцгеймера",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Примеры:
-  python cli.py download            # скачать данные
-  python cli.py analyze             # полный анализ
-  python cli.py classify            # только классификатор
-  python cli.py report              # сгенерировать отчёт
+Быстрый старт (диагностическая модель):
+  python cli.py generate-synthetic   # создать тестовые данные
+  python cli.py classify-oasis       # обучить и оценить модель
+  python cli.py report               # сгенерировать отчёт
+
+Исследовательский анализ (scRNA-seq):
+  python cli.py download             # скачать GSE138852
+  python cli.py analyze              # DEG + ансамблевый классификатор
         """,
     )
 
     sub = parser.add_subparsers(dest="command", metavar="команда")
     sub.required = True
 
-    sub.add_parser("download", help="Скачать данные GSE138852 с GEO")
-    sub.add_parser("analyze",  help="Полный анализ: DEG + визуализация + классификатор + Enrichr")
-    sub.add_parser("classify", help="Только мультимодальный ансамблевый классификатор")
+    sub.add_parser("generate-synthetic",
+                   help="Сгенерировать тестовые данные OASIS-3")
+    sub.add_parser("classify-oasis",
+                   help="Мультимодальный классификатор AD (МРТ + клиника)")
     sub.add_parser("report",   help="Сгенерировать PowerPoint-отчёт")
+    sub.add_parser("download", help="Скачать scRNA-seq данные GSE138852")
+    sub.add_parser("analyze",  help="DEG-анализ на GSE138852 (исследовательский)")
 
     args = parser.parse_args()
-
-    dispatch = {
-        "download": cmd_download,
-        "analyze":  cmd_analyze,
-        "classify": cmd_classify,
-        "report":   cmd_report,
-    }
-    dispatch[args.command](args)
+    {
+        "generate-synthetic": cmd_generate_synthetic,
+        "classify-oasis":     cmd_classify_oasis,
+        "report":             cmd_report,
+        "download":           cmd_download,
+        "analyze":            cmd_analyze,
+    }[args.command](args)
 
 
 if __name__ == "__main__":

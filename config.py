@@ -54,3 +54,10 @@ MULTIMODAL_EMBED_DIM = 128
 MULTIMODAL_EPOCHS    = 50
 MULTIMODAL_TEST_SIZE = 0.2
 MULTIMODAL_BATCH     = 32
+
+# ── Kaggle OASIS (реальные данные, без ограничений) ───────────────────
+KAGGLE_LONG_FILE  = "data/kaggle/oasis_longitudinal.csv"
+KAGGLE_CROSS_FILE = "data/kaggle/oasis_cross-sectional.csv"
+
+KAGGLE_MRI_COLS  = ["etiv", "nwbv", "asf"]
+KAGGLE_CLIN_COLS = ["age", "sex", "educ", "ses", "mmse", "cdr"]

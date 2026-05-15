@@ -17,6 +17,64 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
+# ── setup-kaggle ──────────────────────────────────────────────────────
+
+def cmd_setup_kaggle(args):
+    import shutil
+    from data_loader_kaggle import KaggleOASISLoader
+    from config import KAGGLE_LONG_FILE, KAGGLE_CROSS_FILE
+
+    src_long  = "/Users/vera/Downloads/archive/oasis_longitudinal.csv"
+    src_cross = "/Users/vera/Downloads/archive/oasis_cross-sectional.csv"
+
+    _banner("Настройка данных OASIS (Kaggle)")
+    loader = KaggleOASISLoader()
+    loader.copy_from_downloads(src_long, src_cross)
+    print("Готово! Запустите: python cli.py classify-kaggle")
+
+
+# ── classify-kaggle ───────────────────────────────────────────────────
+
+def cmd_classify_kaggle(args):
+    import numpy as np
+    from data_loader_kaggle    import KaggleOASISLoader
+    from multimodal_classifier import MultimodalClassifier
+    from visualizer_multimodal import MultimodalVisualizer
+    from config import RESULTS_FOLDER
+
+    os.makedirs(RESULTS_FOLDER, exist_ok=True)
+    _banner("Мультимодальная диагностика AD — OASIS (Kaggle)")
+
+    print("\n[1/4] Загрузка данных")
+    loader = KaggleOASISLoader()
+    loader.load()
+    loader.print_summary()
+    X_mri, X_clin, y, groups, mri_cols, clin_cols = loader.get_feature_matrices()
+
+    print("\n[2/4] Обучение (Gated Fusion: МРТ + клиника)")
+    clf     = MultimodalClassifier()
+    metrics = clf.train(X_mri, X_clin, y, groups,
+                        mri_names=mri_cols, clin_names=clin_cols)
+
+    print("\n[3/4] Визуализация")
+    viz = MultimodalVisualizer()
+    viz.plot_training_loss(metrics["losses"])
+    viz.plot_multihead_roc(
+        metrics["y_true"], metrics["probs"],
+        metrics["probs_mri_only"], metrics["probs_clin_only"],
+    )
+    viz.plot_confusion_matrix(metrics["y_true"], metrics["preds"])
+    viz.plot_gate_weights(metrics["gates"], metrics["y_true"])
+    importances = np.std(metrics["embeddings"][:, :len(mri_cols)], axis=0)
+    viz.plot_roi_importance(mri_cols, importances)
+    viz.plot_biomarker_trajectory(loader.df)
+    viz.plot_fusion_umap(metrics["embeddings"], metrics["y_true"])
+
+    print(f"\n[4/4] Accuracy: {metrics['accuracy']:.3f}  "
+          f"ROC-AUC: {metrics['roc_auc']:.3f}")
+    _done(RESULTS_FOLDER)
+
+
 # ── generate-synthetic ────────────────────────────────────────────────
 
 def cmd_generate_synthetic(args):
@@ -181,9 +239,9 @@ def main():
         description="Мультимодальная диагностика болезни Альцгеймера",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Быстрый старт (диагностическая модель):
-  python cli.py generate-synthetic   # создать тестовые данные
-  python cli.py classify-oasis       # обучить и оценить модель
+Быстрый старт (реальные данные Kaggle):
+  python cli.py setup-kaggle         # скопировать файлы из Downloads
+  python cli.py classify-kaggle      # обучить и оценить модель
   python cli.py report               # сгенерировать отчёт
 
 Исследовательский анализ (scRNA-seq):
@@ -195,16 +253,22 @@ def main():
     sub = parser.add_subparsers(dest="command", metavar="команда")
     sub.required = True
 
+    sub.add_parser("setup-kaggle",
+                   help="Скопировать файлы OASIS из Downloads в data/kaggle/")
+    sub.add_parser("classify-kaggle",
+                   help="Мультимодальный классификатор на реальных данных OASIS (Kaggle)")
     sub.add_parser("generate-synthetic",
-                   help="Сгенерировать тестовые данные OASIS-3")
+                   help="Сгенерировать синтетические данные OASIS-3")
     sub.add_parser("classify-oasis",
-                   help="Мультимодальный классификатор AD (МРТ + клиника)")
+                   help="Мультимодальный классификатор на синтетических данных")
     sub.add_parser("report",   help="Сгенерировать PowerPoint-отчёт")
     sub.add_parser("download", help="Скачать scRNA-seq данные GSE138852")
     sub.add_parser("analyze",  help="DEG-анализ на GSE138852 (исследовательский)")
 
     args = parser.parse_args()
     {
+        "setup-kaggle":       cmd_setup_kaggle,
+        "classify-kaggle":    cmd_classify_kaggle,
         "generate-synthetic": cmd_generate_synthetic,
         "classify-oasis":     cmd_classify_oasis,
         "report":             cmd_report,

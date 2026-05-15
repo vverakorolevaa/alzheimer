@@ -83,7 +83,6 @@ class EnrichmentAnalyzer:
             csv_path = os.path.join(RESULTS_FOLDER, f'enrichment_{cell_type}_{lib}.csv')
             df.to_csv(csv_path, index=False)
 
-        # График для GO
         if 'GO_Biological_Process_2023' in results:
             self._barplot(
                 results['GO_Biological_Process_2023'],

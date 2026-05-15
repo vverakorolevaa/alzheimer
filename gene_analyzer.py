@@ -14,16 +14,16 @@ class GeneAnalyzer:
     Ищет дифференциально экспрессированные гены (DEG) —
     гены, которые значимо изменены у больных по сравнению со здоровыми.
 
-    Метод: критерий Манна-Уитни (Вилкоксона) + FDR-коррекция
+    Методы: критерий Манна-Уитни и FDR-коррекция
     по Бенджамини-Хохбергу (контроль доли ложных открытий).
 
     Анализ проводится отдельно для каждого типа клеток мозга,
-    чтобы увидеть, какие именно клетки затронуты болезнью.
+    чтобы увидеть, какие именно клетки затронуты болезнью ( single-cell RNA sequencing)
     """
 
     def __init__(self, adata):
         self.adata   = adata
-        self.results = {}   # { cell_type: DataFrame с DEG }
+        self.results = {}   
 
     def analyze_cell_type(self, cell_type):
         """DEG-анализ для одного типа клеток."""
@@ -47,7 +47,6 @@ class GeneAnalyzer:
             g_ct = np.asarray(ct_expr[:, i]).flatten()
             _, pvals[i] = stats.mannwhitneyu(g_ad, g_ct, alternative='two-sided')
 
-        # Поправка на множественные сравнения
         _, padj, _, _ = multipletests(pvals, method='fdr_bh')
 
         mean_ad  = np.asarray(ad_expr.mean(axis=0)).flatten()

@@ -15,7 +15,6 @@ import GEOparse
 GEO_ACCESSION = "GSE138852"
 OUTPUT_DIR    = "data"
 
-# Прямые ссылки на файлы (можно скачать вручную с GEO если не работает автоматически)
 COUNTS_URL = (
     "https://www.ncbi.nlm.nih.gov/geo/download/"
     "?acc=GSE138852&format=file&file=GSE138852_counts.csv.gz"

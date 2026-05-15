@@ -60,12 +60,11 @@ def compute_cell_embeddings(adata, deg_results, gene2vec):
 
     Для каждой клетки: взвешенная сумма эмбеддингов DEG-генов,
     где вес = нормированный уровень экспрессии гена в данной клетке.
-    Результат: матрица (n_cells × GENE2VEC_DIM).
+    Результат: матрица (n_cells - GENE2VEC_DIM).
 
     Если Gene2Vec недоступен — возвращает нулевую матрицу (голова будет
     обучаться со случайными весами, но это не приводит к ошибке).
     """
-    # Собираем топ DEG с Gene2Vec эмбеддингами
     all_degs = []
     for df in deg_results.values():
         sig = df[df["significant"]]["gene"].tolist()
@@ -82,7 +81,6 @@ def compute_cell_embeddings(adata, deg_results, gene2vec):
     X_expr     = np.asarray(adata.X[:, gene_idx], dtype=np.float32)   # (cells × genes)
     emb_matrix = np.array([gene2vec[g] for g in genes_ok], dtype=np.float32)  # (genes × 200)
 
-    # Нормализуем экспрессию по каждому гену отдельно
     col_max = X_expr.max(axis=0, keepdims=True) + 1e-8
     X_norm  = X_expr / col_max
 
@@ -96,10 +94,10 @@ def compute_composition_features(adata):
     Вторая модальность: клеточный состав образца.
 
     Для каждой клетки добавляем вектор — доли клеточных типов
-    в том образце (доноре), из которого эта клетка.
+    в том образце, из которого эта клетка.
     Это контекстуальная информация об иммунном/клеточном окружении.
 
-    Возвращает: матрица (n_cells × n_cell_types), список cell_type_names.
+    Возвращает: матрица (n_cells - n_cell_types), список cell_type_names.
     """
     from config import CELL_TYPE_COL
 
@@ -109,7 +107,6 @@ def compute_composition_features(adata):
 
     composition = np.zeros((adata.n_obs, n_ct), dtype=np.float32)
 
-    # Пытаемся найти колонку с ID донора/образца
     donor_candidates = [c for c in adata.obs.columns
                         if any(kw in c.lower() for kw in ("donor", "sample", "subject", "patient", "batch"))]
 
@@ -128,7 +125,6 @@ def compute_composition_features(adata):
                 composition[mask, ct_index[ct]] = frac
         print(f"  Состав: {len(np.unique(sample_arr))} образцов, {n_ct} типов клеток")
     else:
-        # Fallback: глобальные пропорции (одинаковые для всех клеток)
         obs_cts = adata.obs[CELL_TYPE_COL].values
         for ct in cell_types:
             composition[:, ct_index[ct]] = (obs_cts == ct).mean()

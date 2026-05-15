@@ -15,17 +15,16 @@ from config import (
 )
 
 
-# ── Архитектура нейросети ─────────────────────────────────────────────
 class GeneNet(nn.Module):
     """
-    Многослойный перцептрон (MLP) для классификации больной/здоровый.
+    Классификации больной/здоровый.
 
-    Вход:  вектор экспрессии ~500 генов
-    Выход: 2 класса (0 = здоровый, 1 = болезнь Альцгеймера)
+    На вход подается вектор экспрессии ~500 генов
+    На выходе 2 класса (0 = здоровый, 1 = болезнь Альцгеймера)
 
-    Слои: Linear → ReLU → Dropout → Linear → ReLU → Dropout → Linear
+    Используемые слои: Linear, ReLU, Dropout, Linear, ReLU, Dropout, Linear
     Dropout(0.3) случайно выключает 30% нейронов при обучении —
-    это защищает от переобучения (когда сеть "зубрит" тренировочные данные).
+    это защищает от переобучения.
     """
 
     def __init__(self, input_size):
@@ -44,10 +43,9 @@ class GeneNet(nn.Module):
         return self.net(x)
 
 
-# ── Обёртка: обучение, оценка, сохранение ────────────────────────────
 class DiseaseClassifier:
     """
-    Полный цикл: подготовка данных → обучение GeneNet → метрики → сохранение.
+    Подготовка данных, обучение GeneNet, метрики, сохранение.
     """
 
     def __init__(self):
@@ -106,7 +104,6 @@ class DiseaseClassifier:
             if (epoch + 1) % 10 == 0:
                 print(f'  Эпоха {epoch+1:2d}/{CLASSIFIER_EPOCHS}  loss={avg:.4f}')
 
-        # Оценка
         self.model.eval()
         with torch.no_grad():
             logits = self.model(torch.from_numpy(X_te))

@@ -9,3 +9,4 @@ results/
 *.h5ad
 *.gz
 .env
+docs/

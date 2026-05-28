@@ -45,7 +45,7 @@ MRI_KEY_ROIS = [
     "third_ventricle", "total_brain_vol",
 ]
 
-CLINICAL_FEATURES = ["age", "sex", "apoe4", "education_years", "mmse", "cdr"]
+CLINICAL_FEATURES = ["age", "sex", "apoe4", "education_years", "mmse"]
 
 DX_LABELS = {0: "CN", 1: "MCI", 2: "AD"}
 DX_COLORS = {0: "#2ECC71", 1: "#F39C12", 2: "#E74C3C"}
@@ -60,4 +60,4 @@ KAGGLE_LONG_FILE  = "data/kaggle/oasis_longitudinal.csv"
 KAGGLE_CROSS_FILE = "data/kaggle/oasis_cross-sectional.csv"
 
 KAGGLE_MRI_COLS  = ["etiv", "nwbv", "asf"]
-KAGGLE_CLIN_COLS = ["age", "sex", "educ", "ses", "mmse", "cdr"]
+KAGGLE_CLIN_COLS = ["age", "sex", "educ", "ses", "mmse"]

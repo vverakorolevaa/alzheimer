@@ -248,10 +248,22 @@ class MultimodalClassifier:
         print(f"  Fusion        AUC: {auc:.3f}   Accuracy: {acc:.3f}")
         print(classification_report(y_te, preds, target_names=dx_names))
 
+        import joblib
         os.makedirs(RESULTS_FOLDER, exist_ok=True)
-        torch.save(self.model.state_dict(),
-                   os.path.join(RESULTS_FOLDER, "multimodal_model.pt"))
+        torch.save({
+            "state_dict": self.model.state_dict(),
+            "mri_dim":    X_mri.shape[1],
+            "clin_dim":   X_clin.shape[1],
+            "n_classes":  n_classes,
+        }, os.path.join(RESULTS_FOLDER, "multimodal_model.pt"))
+        joblib.dump(self.mri_scaler,  os.path.join(RESULTS_FOLDER, "mri_scaler.pkl"))
+        joblib.dump(self.clin_scaler, os.path.join(RESULTS_FOLDER, "clin_scaler.pkl"))
         print(f"  Модель: {RESULTS_FOLDER}/multimodal_model.pt")
+
+        # Важность МРТ-признаков: |W_first_layer| × std(X_test)
+        W = self.model.mri_encoder.net[0].weight.detach().numpy()  # (256, n_mri)
+        mri_importance = np.abs(W).sum(axis=0) * X_mri_te.std(axis=0)
+        mri_importance = mri_importance / (mri_importance.sum() + 1e-8)
 
         return {
             "accuracy": acc, "roc_auc": auc,
@@ -260,4 +272,5 @@ class MultimodalClassifier:
             "probs_clin_only": probs_clin_only,
             "gates": gates, "losses": losses,
             "embeddings": np.concatenate([e_mri.numpy(), e_clin.numpy()], axis=1),
+            "mri_importance": mri_importance,
         }

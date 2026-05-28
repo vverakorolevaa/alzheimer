@@ -24,8 +24,9 @@ def cmd_setup_kaggle(args):
     from data_loader_kaggle import KaggleOASISLoader
     from config import KAGGLE_LONG_FILE, KAGGLE_CROSS_FILE
 
-    src_long  = "/Users/vera/Downloads/archive/oasis_longitudinal.csv"
-    src_cross = "/Users/vera/Downloads/archive/oasis_cross-sectional.csv"
+    archive = os.path.expanduser(args.archive)
+    src_long  = os.path.join(archive, "oasis_longitudinal.csv")
+    src_cross = os.path.join(archive, "oasis_cross-sectional.csv")
 
     _banner("Настройка данных OASIS (Kaggle)")
     loader = KaggleOASISLoader()
@@ -36,7 +37,6 @@ def cmd_setup_kaggle(args):
 # ── classify-kaggle ───────────────────────────────────────────────────
 
 def cmd_classify_kaggle(args):
-    import numpy as np
     from data_loader_kaggle    import KaggleOASISLoader
     from multimodal_classifier import MultimodalClassifier
     from visualizer_multimodal import MultimodalVisualizer
@@ -65,8 +65,7 @@ def cmd_classify_kaggle(args):
     )
     viz.plot_confusion_matrix(metrics["y_true"], metrics["preds"])
     viz.plot_gate_weights(metrics["gates"], metrics["y_true"])
-    importances = np.std(metrics["embeddings"][:, :len(mri_cols)], axis=0)
-    viz.plot_roi_importance(mri_cols, importances)
+    viz.plot_roi_importance(mri_cols, metrics["mri_importance"])
     viz.plot_biomarker_trajectory(loader.df)
     viz.plot_fusion_umap(metrics["embeddings"], metrics["y_true"])
 
@@ -87,7 +86,6 @@ def cmd_generate_synthetic(args):
 # ── classify-oasis ────────────────────────────────────────────────────
 
 def cmd_classify_oasis(args):
-    import numpy as np
     from data_loader_oasis       import OASISLoader
     from multimodal_classifier   import MultimodalClassifier
     from visualizer_multimodal   import MultimodalVisualizer
@@ -118,12 +116,7 @@ def cmd_classify_oasis(args):
     )
     viz.plot_confusion_matrix(metrics["y_true"], metrics["preds"])
     viz.plot_gate_weights(metrics["gates"], metrics["y_true"])
-
-    # Важность МРТ-признаков: std активаций по тестовой выборке
-    importances = np.std(metrics["embeddings"][:, :len(mri_cols)], axis=0)
-    if len(importances) != len(mri_cols):
-        importances = np.ones(len(mri_cols))
-    viz.plot_roi_importance(mri_cols, importances)
+    viz.plot_roi_importance(mri_cols, metrics["mri_importance"])
 
     viz.plot_biomarker_trajectory(loader.df)
     viz.plot_fusion_umap(metrics["embeddings"], metrics["y_true"])
@@ -235,7 +228,7 @@ def _done(folder):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="altchgamer",
+        prog="alzheimer",
         description="Мультимодальная диагностика болезни Альцгеймера",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -253,8 +246,10 @@ def main():
     sub = parser.add_subparsers(dest="command", metavar="команда")
     sub.required = True
 
-    sub.add_parser("setup-kaggle",
+    p_setup = sub.add_parser("setup-kaggle",
                    help="Скопировать файлы OASIS из Downloads в data/kaggle/")
+    p_setup.add_argument("--archive", default="~/Downloads/archive",
+                         help="Папка с файлами OASIS (default: ~/Downloads/archive)")
     sub.add_parser("classify-kaggle",
                    help="Мультимодальный классификатор на реальных данных OASIS (Kaggle)")
     sub.add_parser("generate-synthetic",

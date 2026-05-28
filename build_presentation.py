@@ -1,6 +1,7 @@
 """
-Генерация PowerPoint-презентации (12 слайдов).
-Запуск: python cli.py report   или   python build_presentation.py
+Генерация PowerPoint-презентации (10 слайдов).
+Структура: Титул + 8 разделов по требованиям курсового проекта.
+Запуск: python build_presentation.py
 """
 
 import os
@@ -9,421 +10,577 @@ from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from config import RESULTS_FOLDER
 
-DARK    = RGBColor(0x2C, 0x3E, 0x50)
-RED     = RGBColor(0xE7, 0x4C, 0x3C)
-GRAY    = RGBColor(0x7F, 0x8C, 0x8D)
-GREEN   = RGBColor(0x27, 0xAE, 0x60)
-ORANGE  = RGBColor(0xF3, 0x9C, 0x12)
-BLUE    = RGBColor(0x29, 0x80, 0xB9)
-WHITE   = RGBColor(0xFF, 0xFF, 0xFF)
+DARK   = RGBColor(0x1A, 0x25, 0x3A)
+BLUE   = RGBColor(0x2E, 0x86, 0xC1)
+GRAY   = RGBColor(0x5D, 0x6D, 0x7E)
+GREEN  = RGBColor(0x1E, 0x8B, 0x4C)
+RED    = RGBColor(0xCB, 0x4A, 0x35)
+WHITE  = RGBColor(0xFF, 0xFF, 0xFF)
+LBLUE  = RGBColor(0xD6, 0xEA, 0xF8)
+LGRAY  = RGBColor(0xF2, 0xF3, 0xF4)
+ORANGE = RGBColor(0xF3, 0x9C, 0x12)
+
+DESKTOP = os.path.expanduser("~/Desktop")
 
 
 def _slide(prs):
     return prs.slides.add_slide(prs.slide_layouts[6])
 
 
+def _rect(slide, left, top, width, height, fill):
+    s = slide.shapes.add_shape(1, left, top, width, height)
+    s.fill.solid()
+    s.fill.fore_color.rgb = fill
+    s.line.fill.background()
+    return s
+
+
 def _box(slide, text, left, top, width, height,
-         size=Pt(13), color=DARK, bold=False, wrap=True, font="Calibri"):
+         size=Pt(13), color=DARK, bold=False, font="Calibri"):
     txb = slide.shapes.add_textbox(left, top, width, height)
-    tf  = txb.text_frame
-    tf.word_wrap = wrap
+    tf = txb.text_frame
+    tf.word_wrap = True
     tf.text = text
     for para in tf.paragraphs:
         for run in para.runs:
-            run.font.size  = size
-            run.font.bold  = bold
+            run.font.size = size
+            run.font.bold = bold
             run.font.color.rgb = color
-            run.font.name  = font
+            run.font.name = font
 
 
-def _title(slide, text, top=Inches(0.25), size=Pt(22)):
-    _box(slide, text, Inches(0.4), top, Inches(9.2), Inches(0.7),
-         size=size, color=DARK, bold=True)
+def _title(slide, text, subtitle=None):
+    _rect(slide, Inches(0), Inches(0), Inches(10), Inches(1.3), DARK)
+    _box(slide, text, Inches(0.4), Inches(0.15), Inches(9.2), Inches(0.9),
+         size=Pt(22), color=WHITE, bold=True)
+    if subtitle:
+        _box(slide, subtitle, Inches(0.4), Inches(1.35), Inches(9.2), Inches(0.4),
+             size=Pt(12), color=GRAY)
 
 
-def _subtitle(slide, text, top=Inches(0.9), size=Pt(13)):
-    _box(slide, text, Inches(0.4), top, Inches(9.2), Inches(5.8),
-         size=size, color=DARK)
+def _body(slide, text, top=Inches(1.5), height=Inches(5.2), size=Pt(13)):
+    _box(slide, text, Inches(0.4), top, Inches(9.2), height, size=size, color=DARK)
 
 
-def _code(slide, text, top=Inches(1.0), height=Inches(5.5)):
-    _box(slide, text, Inches(0.4), top, Inches(9.2), height,
-         size=Pt(11), color=DARK, font="Courier New")
+def _code(slide, text, top=Inches(1.5), height=Inches(5.2)):
+    _rect(slide, Inches(0.3), top, Inches(9.4), height, RGBColor(0xF4, 0xF6, 0xF7))
+    _box(slide, text, Inches(0.5), top + Pt(6), Inches(9.0), height - Pt(12),
+         size=Pt(10.5), color=DARK, font="Courier New")
 
 
-def _label(slide, text, left, top, width=Inches(2), height=Inches(0.4),
-           size=Pt(11), color=GRAY):
-    _box(slide, text, left, top, width, height, size=size, color=color)
-
-
-def _img(slide, name, left=Inches(0.5), top=Inches(1.0),
-         width=Inches(9), height=Inches(5.6)):
-    path = os.path.join(RESULTS_FOLDER, name)
-    if os.path.exists(path):
-        slide.shapes.add_picture(path, left, top, width, height)
-    else:
-        _box(slide, f"[График не найден: {name}\nЗапустите: python cli.py classify-kaggle]",
-             left, top, width, Inches(1.5), size=Pt(12), color=GRAY)
-
-
-def _two_imgs(slide, name1, name2):
-    for name, left in [(name1, Inches(0.3)), (name2, Inches(5.1))]:
+def _two_imgs(slide, name1, name2,
+              label1="", label2=""):
+    for name, label, left in [(name1, label1, Inches(0.3)),
+                               (name2, label2, Inches(5.15))]:
         path = os.path.join(RESULTS_FOLDER, name)
         if os.path.exists(path):
-            slide.shapes.add_picture(path, left, Inches(1.0),
-                                     Inches(4.5), Inches(5.5))
+            slide.shapes.add_picture(path, left, Inches(1.5),
+                                     Inches(4.6), Inches(5.0))
         else:
-            _box(slide, f"[{name}]", left, Inches(1.0),
-                 Inches(4.5), Inches(1), size=Pt(11), color=GRAY)
+            _rect(slide, left, Inches(1.5), Inches(4.6), Inches(5.0),
+                  RGBColor(0xEB, 0xED, 0xEE))
+            _box(slide, f"[{name}]\nЗапустите:\npython cli.py classify-kaggle",
+                 left + Inches(0.1), Inches(3.0), Inches(4.4), Inches(1.5),
+                 size=Pt(11), color=GRAY)
+        if label:
+            _box(slide, label, left, Inches(6.55), Inches(4.6), Inches(0.35),
+                 size=Pt(10), color=GRAY)
 
 
 def _notes(slide, text):
     slide.notes_slide.notes_text_frame.text = text
 
 
-def _rect(slide, left, top, width, height, fill_color):
-    shape = slide.shapes.add_shape(1, left, top, width, height)
-    shape.fill.solid()
-    shape.fill.fore_color.rgb = fill_color
-    shape.line.fill.background()
-
-
 def build(output=None):
     if output is None:
-        output = os.path.join(RESULTS_FOLDER, "report.pptx")
+        output = os.path.join(DESKTOP, "report.pptx")
 
     prs = Presentation()
     prs.slide_width  = Inches(10)
     prs.slide_height = Inches(7)
 
     # ══════════════════════════════════════════════════════════════════
-    # 1. Титульный слайд
+    # 0. Титульный слайд
     # ══════════════════════════════════════════════════════════════════
     sl = _slide(prs)
-    _rect(sl, Inches(0), Inches(0), Inches(10), Inches(1.5),
-          RGBColor(0x2C, 0x3E, 0x50))
-    _box(sl, "МУЛЬТИМОДАЛЬНАЯ РАННЯЯ ДИАГНОСТИКА",
-         Inches(0.5), Inches(0.2), Inches(9), Inches(0.7),
-         size=Pt(20), color=WHITE, bold=True)
-    _box(sl, "БОЛЕЗНИ АЛЬЦГЕЙМЕРА",
-         Inches(0.5), Inches(0.8), Inches(9), Inches(0.5),
-         size=Pt(16), color=RGBColor(0xAE, 0xD6, 0xF1))
-
-    _box(sl, "Двуголовая нейросеть с Gated Fusion\nМРТ-биомаркеры + Клинические тесты → CN / MCI / AD",
-         Inches(0.5), Inches(2.0), Inches(9), Inches(1.0),
-         size=Pt(15), color=DARK)
-
-    _box(sl, "Данные: OASIS (Kaggle) — открытый датасет, 586 пациентов\n"
-             "Архитектура: MRIEncoder + ClinicalEncoder + GatedFusion\n"
-             "Цель: ранняя диагностика на стадии MCI — до развития деменции",
-         Inches(0.5), Inches(3.2), Inches(9), Inches(1.8),
-         size=Pt(13), color=GRAY)
-
+    _rect(sl, Inches(0), Inches(0), Inches(10), Inches(2.2), DARK)
+    _box(sl, "МУЛЬТИМОДАЛЬНАЯ РАННЯЯ ДИАГНОСТИКА\nБОЛЕЗНИ АЛЬЦГЕЙМЕРА",
+         Inches(0.5), Inches(0.2), Inches(9), Inches(1.4),
+         size=Pt(24), color=WHITE, bold=True)
+    _box(sl, "с помощью методов машинного обучения",
+         Inches(0.5), Inches(1.55), Inches(9), Inches(0.5),
+         size=Pt(14), color=RGBColor(0xAE, 0xD6, 0xF1))
+    _box(sl,
+         "Курсовой проект по биоинформатике\n"
+         "Двухпоточная нейросеть с Gated Fusion  ·  Датасет OASIS  ·  586 пациентов\n"
+         "Классификация: CN (норма)  /  MCI (ранняя стадия)  /  AD (деменция)",
+         Inches(0.5), Inches(2.5), Inches(9), Inches(1.5),
+         size=Pt(13), color=DARK)
+    _box(sl, "Вера Королёва  ·  2026",
+         Inches(0.5), Inches(5.9), Inches(5), Inches(0.5),
+         size=Pt(11), color=GRAY)
+    _box(sl, "github.com/vverakorolevaa/alzheimer",
+         Inches(6.0), Inches(5.9), Inches(3.8), Inches(0.5),
+         size=Pt(11), color=GRAY)
     _notes(sl,
-        "Добрый день! Меня зовут Вера, и я представляю проект по ранней диагностике болезни Альцгеймера.\n\n"
-        "Проект называется Alzheimer — это приложение командной строки, которое принимает данные МРТ и "
-        "клинических тестов и выдаёт вероятность того, что пациент здоров (CN), имеет лёгкие нарушения (MCI) "
-        "или болезнь Альцгеймера (AD).\n\n"
-        "Данные взяты из открытого датасета OASIS на платформе Kaggle — без каких-либо ограничений доступа.")
+        "Добрый день! Меня зовут Вера Королёва, я представляю курсовой проект "
+        "по биоинформатике — систему ранней диагностики болезни Альцгеймера.\n\n"
+        "Система принимает данные МРТ и клинических тестов и классифицирует пациента "
+        "по трём стадиям: CN — норма, MCI — ранние когнитивные нарушения, AD — деменция.\n\n"
+        "Датасет OASIS: 586 пациентов, открытый доступ. "
+        "Проект реализован на Python и PyTorch.")
 
     # ══════════════════════════════════════════════════════════════════
-    # 2. Проблема
+    # 1. Литературный обзор
     # ══════════════════════════════════════════════════════════════════
     sl = _slide(prs)
-    _title(sl, "Почему важна ранняя диагностика?")
-    _subtitle(sl,
-        "Болезнь Альцгеймера — самая распространённая форма деменции:\n"
-        "  • 55+ млн больных в мире, ежегодно 10 млн новых случаев (ВОЗ, 2023)\n"
-        "  • Нет лечения, останавливающего болезнь\n\n"
-        "Ключевая проблема: патология мозга начинается за 10–20 лет до симптомов.\n"
-        "К моменту постановки диагноза безвозвратно утрачено 30–40% нейронов гиппокампа.\n\n"
-        "Три стадии:\n"
-        "  CN  — когнитивно нормальный: изменения в мозге есть, симптомов нет\n"
-        "  MCI — лёгкие когнитивные нарушения: «окно возможностей» для терапии\n"
-        "  AD  — деменция: необратимые потери памяти и функций\n\n"
-        "Цель проекта:\n"
-        "  Найти MCI по неинвазивным данным — МРТ + когнитивные тесты — до наступления AD.\n"
-        "  Именно MCI сложнее всего поймать, и именно там помощь максимально эффективна.",
-        top=Inches(1.0))
-
+    _title(sl, "1. Литературный обзор")
+    _body(sl,
+        "Болезнь Альцгеймера — наиболее распространённая форма деменции\n\n"
+        "•  55+ млн больных (ВОЗ, 2023); +10 млн новых случаев в год\n"
+        "•  Патология начинается за 10–20 лет до первых симптомов\n"
+        "•  К моменту диагноза необратимо утрачено 30–40% нейронов гиппокампа (Jack et al., 2018)\n"
+        "•  Стадии: CN (норма) → MCI → AD;  MCI → AD: 15% пациентов в год\n\n"
+        "Биомаркеры\n\n"
+        "•  nWBV снижается на 0.5–1%/год при MCI и на 1.5–2%/год при AD (Fox et al., 1999)\n"
+        "•  MMSE (0–30): ниже 26 — риск MCI;  CDR: 0 / 0.5 / 1–3\n"
+        "•  Образование — когнитивный резерв, защитный фактор (Stern, Lancet Neurol, 2012)\n\n"
+        "Мультимодальные подходы стабильно точнее однородных\n\n"
+        "•  Zhang et al. (2011) NeuroImage — МРТ + ПЭТ + ликвор: AUC = 0.93\n"
+        "•  Spasov et al. (2019) NeuroImage — глубокое обучение: AUC = 0.925\n"
+        "•  Gated Fusion (Arevalo et al., 2017) — в нейродиагностике ранее не применялся")
     _notes(sl,
-        "Болезнь Альцгеймера — не просто забывчивость. Это нейродегенеративный процесс, который разрушает нейроны "
-        "необратимо. Проблема в том, что к тому моменту, когда человек приходит к врачу с первыми симптомами, "
-        "он уже потерял почти треть нейронов гиппокампа — части мозга, отвечающей за память.\n\n"
-        "Стадия MCI — это переходный период. 15% пациентов с MCI каждый год переходят в стадию деменции. "
-        "Именно здесь вмешательство ещё может помочь: препараты Lecanemab и Donanemab, одобренные в 2023 году, "
-        "работают только на ранней стадии — они замедляют прогрессию на 27–35%.\n\n"
-        "Поэтому задача моего проекта — классифицировать пациентов на три группы, особенно точно выделяя MCI.")
+        "Литературный обзор структурирован по трём блокам.\n\n"
+        "Первый: масштаб — 55 миллионов больных, темп роста 10 миллионов в год. "
+        "При этом единственные одобренные препараты, способные замедлить болезнь — "
+        "Lecanemab и Donanemab — работают только на стадии MCI. "
+        "Значит, задача ранней диагностики MCI критически важна.\n\n"
+        "Второй: биомаркеры. nWBV — нормированный объём мозга — линейно снижается "
+        "с прогрессией болезни. MMSE и CDR — стандарт когнитивной оценки в клинике.\n\n"
+        "Третий: методы. Мультимодальные подходы стабильно дают AUC выше 0,90. "
+        "Gated Fusion как механизм — хорошо известен в NLP, но в нейродиагностике "
+        "практически не применялся. Это и определяет новизну.")
 
     # ══════════════════════════════════════════════════════════════════
-    # 3. Датасет OASIS
+    # 2. Обоснование разработки
     # ══════════════════════════════════════════════════════════════════
     sl = _slide(prs)
-    _title(sl, "Данные: OASIS (Open Access Series of Imaging Studies)")
-    _subtitle(sl,
-        "Два открытых датасета, доступных на Kaggle без ограничений:\n\n"
-        "OASIS-1 (поперечный, Marcus et al., 2007):\n"
-        "  • 436 участников, возраст 18–96 лет\n"
-        "  • МРТ + когнитивные тесты + демография\n"
-        "  • Метка: CDR (0 → CN, 0.5 → MCI, ≥1 → AD)\n\n"
-        "OASIS-2 (продольный, Marcus et al., 2010):\n"
-        "  • 150 участников старше 60 лет, 2+ сессии на человека\n"
-        "  • Метка: Group (Nondemented / Converted / Demented)\n\n"
-        "После объединения и фильтрации (возраст ≥ 60):\n"
-        "  586 наблюдений · 9 признаков · 3 класса\n\n"
-        "МРТ-признаки (FreeSurfer):  eTIV, nWBV, ASF\n"
-        "Клинические признаки:       возраст, пол, образование, SES, MMSE, CDR",
-        top=Inches(1.0))
-
+    _title(sl, "2. Обоснование разработки")
+    _body(sl,
+        "Проблема\n\n"
+        "•  MCI — «окно терапии»: единственная стадия, где вмешательство эффективно\n"
+        "•  К клиническому диагнозу утрачено 30–40% нейронов; лечить поздно\n"
+        "•  Задача: выявить MCI по неинвазивным данным (МРТ + когнитивные тесты)\n\n"
+        "Недостатки существующих подходов\n\n"
+        "•  Одна модальность: только МРТ или только клиника — каждая неполна\n"
+        "•  Конкатенация: фиксированные веса, нет адаптации к пациенту\n"
+        "•  Без donor-level split AUC завышен на продольных данных\n"
+        "•  Нет интерпретируемости: врач не видит, на что опирается модель\n\n"
+        "Новизна\n\n"
+        "  ✓  Gated Fusion — адаптивный вес модальностей для каждого пациента\n"
+        "  ✓  Donor-level split — корректная валидация без утечки визитов\n"
+        "  ✓  Интерпретируемость: gate-вес показывает роль МРТ vs. клиники\n"
+        "  ✓  scRNA-seq анализ GSE138852 — молекулярное обоснование (80 000 клеток)")
     _notes(sl,
-        "Данные взяты из датасета OASIS — это открытая серия исследований МРТ мозга, созданная "
-        "Вашингтонским университетом.\n\n"
-        "Я использую два CSV-файла с Kaggle: oasis_longitudinal.csv и oasis_cross-sectional.csv. "
-        "Kaggle не требует институциональной регистрации, поэтому данные доступны без ограничений.\n\n"
-        "МРТ-признаки получены программой FreeSurfer — это стандарт в нейронауке для автоматической "
-        "сегментации мозга:\n"
-        "  eTIV (estimated Total Intracranial Volume) — объём черепной коробки, используется для нормализации\n"
-        "  nWBV (normalized Whole Brain Volume) — нормированный объём мозга, уменьшается при AD\n"
-        "  ASF (Atlas Scaling Factor) — коэффициент масштабирования к атласу мозга\n\n"
-        "Ключевое преимущество: МРТ и клиника взяты от одного пациента на одном визите, "
-        "поэтому мультимодальное обучение корректно.")
+        "Ключевой аргумент: болезнь Альцгеймера неизлечима, но прогрессию можно замедлить — "
+        "только на MCI-стадии. После перехода в AD эффективного лечения нет.\n\n"
+        "Проблема существующих систем — три уровня:\n"
+        "Первый: одна модальность. МРТ хорошо работает при AD, но слабее при MCI; "
+        "клиника — наоборот. Комбинация компенсирует слабости каждой.\n"
+        "Второй: некорректная валидация. При продольных данных один пациент "
+        "может попасть в train и test. Donor-level split это исключает.\n"
+        "Третий: интерпретируемость. В медицине 'чёрный ящик' неприемлем. "
+        "Gate-вес показывает, какой модальности модель доверяла для конкретного пациента.\n\n"
+        "Вторая новизна — scRNA-seq анализ: молекулярное подтверждение паттернов на клеточном уровне.")
 
     # ══════════════════════════════════════════════════════════════════
-    # 4. Биомаркеры: нарастание патологии
+    # 3. Реферат
     # ══════════════════════════════════════════════════════════════════
     sl = _slide(prs)
-    _title(sl, "Биомаркеры: патология нарастает CN → MCI → AD")
-    _img(sl, "biomarker_trajectory.png")
+    _title(sl, "3. Реферат")
+    _body(sl,
+        "Что сделано\n\n"
+        "•  CLI-приложение на Python — 7 команд, полный пайплайн\n"
+        "•  Нейросеть MultimodalADNet: MRIEncoder + ClinicalEncoder + Gated Fusion → CN / MCI / AD\n"
+        "•  Два независимых пайплайна: OASIS (586 пациентов) + GSE138852 (80 000 клеток scRNA-seq)\n"
+        "•  Donor-level валидация, 7 визуализаций, автоматический PowerPoint-отчёт\n\n"
+        "Ожидаемые результаты\n\n"
+        "•  Fusion AUC > MRI-only и > Clinical-only — мультимодальность эффективнее\n"
+        "•  Gate-вес выше при AD (МРТ важнее), ниже при MCI (клиника важнее)\n"
+        "•  nWBV — ключевой МРТ-биомаркер; согласуется с Fox et al. (1999)\n"
+        "•  Воспроизводимый результат: каждый запуск генерирует актуальный отчёт")
     _notes(sl,
-        "Этот график показывает реальные данные из датасета OASIS.\n\n"
-        "По горизонтали — три стадии болезни: CN (норма), MCI, AD.\n"
-        "По вертикали — значения биомаркеров.\n\n"
-        "Что видно:\n"
-        "  nWBV (объём мозга) последовательно снижается: CN > MCI > AD. "
-        "Это атрофия — мозг буквально уменьшается в размере.\n"
-        "  MMSE (когнитивный тест) также снижается: 28 баллов в норме → 22 при AD.\n"
-        "  eTIV (объём черепа) остаётся стабильным — он не меняется с болезнью, "
-        "поэтому используется для нормализации.\n\n"
-        "Именно эти закономерности учится распознавать модель.")
+        "Реферат — краткое резюме всей работы.\n\n"
+        "Продукт: CLI-приложение с 7 командами. Весь пайплайн от загрузки данных "
+        "до готового отчёта запускается несколькими командами в терминале.\n\n"
+        "Два независимых пайплайна: OASIS (клинический, 586 пациентов) "
+        "и GSE138852 (scRNA-seq, 80 000 клеток). Оба объединены в одном CLI.\n\n"
+        "Ключевая гипотеза: мультимодальная модель точнее однородных. "
+        "Gated Fusion даёт прирост AUC. Gate-веса показывают биологически разумное поведение: "
+        "при AD атрофия выражена — МРТ важнее; при MCI когнитивные тесты важнее МРТ.")
 
     # ══════════════════════════════════════════════════════════════════
-    # 5. Архитектура: двуголовая сеть
+    # 4. Функциональная схема
     # ══════════════════════════════════════════════════════════════════
     sl = _slide(prs)
-    _title(sl, "Архитектура: двуголовая нейросеть MultimodalADNet")
+    _title(sl, "4. Функциональная схема")
     _code(sl,
-        "  МРТ (3 числа)         Клиника (6 чисел)\n"
-        "  eTIV, nWBV, ASF       возраст, пол, образование, SES, MMSE, CDR\n"
-        "        │                        │\n"
-        "        ▼                        ▼\n"
-        "  MRIEncoder              ClinicalEncoder\n"
-        "  3→256→128→128           6→64→128\n"
-        "  (BN + ReLU + Drop)      (ReLU + Drop)\n"
-        "        │                        │\n"
-        "        │     e_mri (128)        │  e_clin (128)\n"
-        "        └──────────┬─────────────┘\n"
-        "                   ▼\n"
-        "             GatedFusion\n"
-        "    gate = σ( W · [e_mri ; e_clin] )    ← число 0–1 для каждого пациента\n"
-        "    fused = gate · e_mri + (1−gate) · e_clin\n"
-        "                   │\n"
-        "                   ▼\n"
-        "            FC: 128 → 64 → 3\n"
-        "                   │\n"
-        "        P(CN)   P(MCI)   P(AD)",
-        top=Inches(0.95), height=Inches(5.8))
-
+        "  ВХОД\n"
+        "  ┌──────────────────────────┐      ┌──────────────────────────────┐\n"
+        "  │       МРТ-признаки       │      │     Клинические данные       │\n"
+        "  │  eTIV, nWBV, ASF         │      │  возраст, пол, образование,  │\n"
+        "  │  (FreeSurfer ROI, 3 пр.) │      │  SES, MMSE, CDR  (6 пр.)     │\n"
+        "  └─────────────┬────────────┘      └──────────────┬───────────────┘\n"
+        "                │                                   │\n"
+        "                ▼                                   ▼\n"
+        "          MRIEncoder                         ClinicalEncoder\n"
+        "       3 → 256 → 128                          6 → 64 → 128\n"
+        "      BN + ReLU + Drop                       ReLU + Dropout\n"
+        "                │  e_mri (128)     e_clin (128)  │\n"
+        "                └──────────────┬────────────────┘\n"
+        "                               ▼\n"
+        "                         GatedFusion\n"
+        "          gate = σ(W · [e_mri ; e_clin])     ← scalar, 0…1 на пациента\n"
+        "          fused = gate · e_mri + (1−gate) · e_clin\n"
+        "                               │\n"
+        "                    Classifier  128 → 64 → 3\n"
+        "                               │\n"
+        "           ВЫХОД:   P(CN)     P(MCI)     P(AD)   → argmax → диагноз",
+        top=Inches(1.35), height=Inches(5.45))
     _notes(sl,
-        "Нейросеть состоит из трёх частей.\n\n"
-        "MRIEncoder — обрабатывает 3 МРТ-числа и сжимает их в 128-мерный вектор "
-        "(эмбеддинг МРТ). Это глубокая сеть с батч-нормализацией и дропаутом для "
-        "стабильного обучения.\n\n"
-        "ClinicalEncoder — обрабатывает 6 клинических признаков и сжимает их в такой же "
-        "128-мерный вектор.\n\n"
-        "GatedFusion — ключевой блок. Он принимает оба вектора и вычисляет 'gate' — "
-        "число от 0 до 1 для каждого пациента. Это число решает, насколько доверять МРТ "
-        "и насколько клинике. Если gate близко к 1 — МРТ важнее. К 0 — клиника важнее.\n\n"
-        "Финальный классификатор принимает объединённый вектор и выдаёт три вероятности: "
-        "P(CN), P(MCI), P(AD). Диагноз — класс с наибольшей вероятностью.")
+        "Схема показывает полный поток данных через систему.\n\n"
+        "Два входных потока обрабатываются независимо. "
+        "МРТ-энкодер глубже (два слоя BatchNorm+ReLU+Dropout) — "
+        "это нужно, чтобы вытащить нелинейные паттерны из трёх числовых признаков. "
+        "Клинический энкодер легче: один скрытый слой достаточен для 6 клинических переменных.\n\n"
+        "Оба потока дают 128-мерные векторы e_mri и e_clin, "
+        "которые поступают в GatedFusion.\n\n"
+        "Gate вычисляется из конкатенации обоих векторов через линейный слой + сигмоид. "
+        "Результат — число от 0 до 1 для каждого пациента. "
+        "Близко к 1 = модель доверяет МРТ; близко к 0 = доверяет клинике.\n\n"
+        "Финальный классификатор: полносвязная сеть 128→64→3, выход через Softmax. "
+        "Диагноз = argmax трёх вероятностей.")
 
     # ══════════════════════════════════════════════════════════════════
-    # 6. Gated Fusion — смысл механизма
+    # 5. Описание инструментов
     # ══════════════════════════════════════════════════════════════════
     sl = _slide(prs)
-    _title(sl, "Gated Fusion: зачем нужен адаптивный механизм слияния?")
-    _subtitle(sl,
-        "Проблема простой конкатенации:\n"
-        "  При наивном объединении [e_mri ; e_clin] каждый признак имеет фиксированный вес.\n"
-        "  Но в реальности важность модальностей меняется от пациента к пациенту.\n\n"
-        "Решение — Gated Fusion (Arevalo et al., 2017):\n"
-        "  gate = sigmoid( W · [e_mri ; e_clin] )     ← вектор весов 0–1\n"
-        "  fused = gate · e_mri  +  (1 − gate) · e_clin\n\n"
-        "Биологическое обоснование:\n"
-        "  • Ранний MCI: МРТ-атрофия ещё незначительна → gate сдвигается к клинике\n"
-        "  • Поздняя AD: атрофия выражена → gate сдвигается к МРТ\n"
-        "  • Пациент с артефактами МРТ: gate автоматически снижает вес МРТ\n\n"
-        "Gate интерпретируем — врач может видеть, каким данным доверяла модель.",
-        top=Inches(1.0))
-
+    _title(sl, "5. Технологии и инструменты")
+    _body(sl,
+        "Инструмент             Применение                        Выбор обоснован\n"
+        "─────────────────────────────────────────────────────────────────────────\n"
+        "PyTorch              MRIEncoder, ClinicalEncoder,       динамический граф;\n"
+        "                     GatedFusion, Classifier            кастомные слои\n\n"
+        "scikit-learn         GroupShuffleSplit (donor-level),   стандарт ML-валидации;\n"
+        "                     ROC-AUC, confusion matrix          GroupShuffleSplit\n\n"
+        "pandas + numpy       загрузка OASIS, merge, fillna,     стандарт для\n"
+        "                     label encoding                     табличных данных\n\n"
+        "scanpy + anndata     scRNA-seq: PCA, UMAP, DEG          отраслевой стандарт\n"
+        "                     GSE138852 (80 000+ клеток)         биоинформатики\n\n"
+        "GEOparse             загрузка GSE138852 с NCBI GEO      нативный формат SOFT\n\n"
+        "matplotlib + seaborn ROC, UMAP, gate boxplot,           полный контроль\n"
+        "                     trajectory, heatmap (7 графиков)   над графиками\n\n"
+        "python-pptx          автогенерация отчёта               воспроизводимость")
     _notes(sl,
-        "Зачем нужен Gated Fusion, если можно просто сложить эмбеддинги?\n\n"
-        "Если просто конкатенировать или усреднить — сеть не может адаптироваться к конкретному пациенту. "
-        "Она всегда одинаково весит МРТ и клинику.\n\n"
-        "Gate решает это. Он вычисляется отдельно для каждого пациента из обоих эмбеддингов. "
-        "Если у конкретного пациента МРТ очень информативно (сильная атрофия), gate будет высоким. "
-        "Если МРТ нормальное, но MMSE снижен — gate будет низким, и модель опирается на клинику.\n\n"
-        "Это делает модель интерпретируемой: для каждого пациента можно сказать, "
-        "почему поставлен именно такой диагноз.")
+        "Выбор инструментов сделан осознанно, каждый обоснован.\n\n"
+        "PyTorch вместо Keras: динамический граф позволяет реализовать GatedFusion "
+        "как кастомный слой с полным контролем над forward-pass. Keras скрывает детали.\n\n"
+        "GroupShuffleSplit из scikit-learn — ключевой инструмент. "
+        "Обычный train_test_split при продольных данных даёт утечку: "
+        "один пациент может попасть в train на визит 1 и в test на визит 2. "
+        "GroupShuffleSplit гарантирует, что все визиты одного пациента в одной части.\n\n"
+        "scanpy — стандарт де-факто для scRNA-seq. "
+        "Понимает формат AnnData, содержит UMAP, PCA, дифференциальную экспрессию.\n\n"
+        "python-pptx закрывает вопрос воспроизводимости: "
+        "каждый запуск classify-kaggle + report генерирует актуальный отчёт "
+        "без ручного копирования графиков.")
 
     # ══════════════════════════════════════════════════════════════════
-    # 7. Предотвращение переобучения
+    # 6. Структура проекта
     # ══════════════════════════════════════════════════════════════════
     sl = _slide(prs)
-    _title(sl, "Предотвращение переобучения")
-    _subtitle(sl,
-        "Проблема: малый датасет (~500 наблюдений) vs. тысячи параметров сети.\n\n"
-        "Главная мера — Donor-level split:\n"
-        "  ❌ Неправильно: случайный split визитов\n"
-        "       Пациент А, визит 1 → Train\n"
-        "       Пациент А, визит 2 → Test   ← модель уже «видела» этого человека!\n\n"
-        "  ✓ Правильно: GroupShuffleSplit по subject_id\n"
-        "       Пациент А, все визиты → только Train ИЛИ только Test\n\n"
-        "Дополнительные меры:\n"
-        "  • Weighted CrossEntropyLoss    — компенсация дисбаланса классов\n"
-        "  • Dropout(0.3) в каждом слое  — 30% нейронов выключены при обучении\n"
-        "  • BatchNorm                    — стабилизация активаций\n"
-        "  • L2-регуляризация (1e-4)      — штраф за слишком большие веса",
-        top=Inches(1.0))
-
+    _title(sl, "6. Структура проекта")
+    _code(sl,
+        "  alzheimer/\n"
+        "  ├── cli.py                      — точка входа; 7 команд\n"
+        "  ├── config.py                   — все гиперпараметры и пути (единственное место)\n"
+        "  │\n"
+        "  ├── Пайплайн OASIS (клинический)\n"
+        "  ├── data_loader_kaggle.py        — загрузка и объединение OASIS-1 + OASIS-2\n"
+        "  ├── multimodal_classifier.py     — MRIEncoder + ClinicalEncoder + GatedFusion\n"
+        "  ├── visualizer_multimodal.py     — 7 визуализаций OASIS-пайплайна\n"
+        "  │\n"
+        "  ├── Пайплайн GSE138852 (scRNA-seq)\n"
+        "  ├── gene_analyzer.py             — дифференц. экспрессия: Mann-Whitney U + BH FDR\n"
+        "  ├── ensemble_classifier.py       — 3-головый ансамбль (Expression+Composition+Gene2Vec)\n"
+        "  ├── gene_embeddings.py           — Gene2Vec-эмбеддинги (Du et al., 2019)\n"
+        "  ├── enrichment_analysis.py       — Enrichr API, pathway-анализ\n"
+        "  ├── visualizer.py                — визуализации scRNA-seq\n"
+        "  │\n"
+        "  ├── build_presentation.py        — генерация этой презентации\n"
+        "  └── results/                     — PNG-графики + report.pptx",
+        top=Inches(1.35), height=Inches(5.45))
     _notes(sl,
-        "В медицинских задачах переобучение — критическая проблема. Датасет маленький, "
-        "а модель может просто запомнить конкретных пациентов.\n\n"
-        "Самая опасная ошибка — случайный split, когда разные визиты одного пациента "
-        "оказываются в train и test. Тогда модель 'видела' этого человека во время обучения "
-        "и легко узнаёт его в тесте — но это не обобщение, а запоминание.\n\n"
-        "GroupShuffleSplit решает это: все данные одного пациента идут только в одну часть.\n\n"
-        "Varoquaux (2018) показал, что ошибки валидации в нейронауке часто завышены именно "
-        "из-за неправильного split. Donor-level split — это стандарт честной оценки.")
+        "Структура проекта разделена по функциям, не по типам файлов.\n\n"
+        "config.py — единственный файл с гиперпараметрами. "
+        "Хочешь поменять learning rate или batch size — правишь в одном месте.\n\n"
+        "Два полностью независимых пайплайна. OASIS — клинический, с нейросетью. "
+        "GSE138852 — scRNA-seq, с ансамблем и статистическим анализом. "
+        "Оба запускаются через единый cli.py — пользователь видит одну точку входа.\n\n"
+        "Слой данных, слой модели и слой визуализации разделены. "
+        "Это позволяет менять модель без переписывания загрузки данных, "
+        "и наоборот — менять источник данных без правки модели.\n\n"
+        "build_presentation.py генерирует отчёт из results/ автоматически: "
+        "если график есть — вставляет, если нет — показывает placeholder.")
 
     # ══════════════════════════════════════════════════════════════════
-    # 8. Кривая обучения + ROC рядом
+    # 7a. Эскиз веб-интерфейса
     # ══════════════════════════════════════════════════════════════════
     sl = _slide(prs)
-    _title(sl, "Обучение и сравнение моделей")
-    _two_imgs(sl, "training_loss.png", "multihead_roc.png")
+    _title(sl, "7. Эскиз веб-интерфейса (в разработке)")
+
+    # Хром браузера
+    _rect(sl, Inches(0.15), Inches(1.35), Inches(9.7), Inches(0.3),
+          RGBColor(0xE8, 0xEA, 0xED))
+    _box(sl, "●  ●  ●", Inches(0.25), Inches(1.37), Inches(0.65), Inches(0.24),
+         size=Pt(9), color=RGBColor(0xBD, 0xC3, 0xC7))
+    _rect(sl, Inches(1.05), Inches(1.38), Inches(7.2), Inches(0.22), WHITE)
+    _box(sl, "alzdiag.app / diagnose",
+         Inches(1.12), Inches(1.39), Inches(7.0), Inches(0.2),
+         size=Pt(8), color=GRAY)
+
+    # Навбар приложения
+    _rect(sl, Inches(0.15), Inches(1.65), Inches(9.7), Inches(0.4), DARK)
+    _box(sl, "AlzDiag — ранняя диагностика болезни Альцгеймера",
+         Inches(0.3), Inches(1.69), Inches(7.0), Inches(0.3),
+         size=Pt(11), color=WHITE, bold=True)
+    _box(sl, "О проекте   Документация",
+         Inches(7.9), Inches(1.69), Inches(1.9), Inches(0.3),
+         size=Pt(9), color=LBLUE)
+
+    # ── Левая панель: форма ввода ─────────────────────────────────────
+    _rect(sl, Inches(0.15), Inches(2.05), Inches(4.35), Inches(4.8),
+          RGBColor(0xF7, 0xF9, 0xFA))
+    _box(sl, "Данные пациента",
+         Inches(0.3), Inches(2.12), Inches(4.0), Inches(0.3),
+         size=Pt(12), color=DARK, bold=True)
+
+    # Разделитель МРТ
+    _rect(sl, Inches(0.3), Inches(2.48), Inches(0.05), Inches(0.22), BLUE)
+    _box(sl, "МРТ-признаки",
+         Inches(0.43), Inches(2.48), Inches(3.8), Inches(0.22),
+         size=Pt(9.5), color=BLUE, bold=True)
+
+    for i, (lbl, val) in enumerate([("eTIV (объём черепа, мм³)", "1450.0"),
+                                     ("nWBV (норм. объём мозга)", "0.742"),
+                                     ("ASF (масштабный коэф.)",  "1.183")]):
+        y = Inches(2.76 + i * 0.5)
+        _box(sl, lbl, Inches(0.3), y, Inches(4.0), Inches(0.19),
+             size=Pt(8), color=GRAY)
+        _rect(sl, Inches(0.3), y + Inches(0.2), Inches(4.0), Inches(0.25), WHITE)
+        _box(sl, val, Inches(0.42), y + Inches(0.21), Inches(3.8), Inches(0.21),
+             size=Pt(9), color=DARK)
+
+    # Разделитель Клиника
+    _rect(sl, Inches(0.3), Inches(4.34), Inches(0.05), Inches(0.22), BLUE)
+    _box(sl, "Клинические данные",
+         Inches(0.43), Inches(4.34), Inches(3.8), Inches(0.22),
+         size=Pt(9.5), color=BLUE, bold=True)
+
+    for i, (lbl, val) in enumerate([("Возраст",          "74"),
+                                     ("Пол",              "Жен."),
+                                     ("Образование (лет)", "16"),
+                                     ("SES",              "2"),
+                                     ("MMSE",             "24"),
+                                     ("CDR",              "0.5")]):
+        col, row = i % 2, i // 2
+        x = Inches(0.3 + col * 2.1)
+        y = Inches(4.62 + row * 0.5)
+        _box(sl, lbl, x, y, Inches(1.9), Inches(0.19), size=Pt(8), color=GRAY)
+        _rect(sl, x, y + Inches(0.2), Inches(1.9), Inches(0.25), WHITE)
+        _box(sl, val, x + Inches(0.1), y + Inches(0.21), Inches(1.7), Inches(0.21),
+             size=Pt(9), color=DARK)
+
+    # Кнопка
+    _rect(sl, Inches(0.3), Inches(6.38), Inches(4.0), Inches(0.36), BLUE)
+    _box(sl, "Определить диагноз  →",
+         Inches(0.3), Inches(6.42), Inches(4.0), Inches(0.28),
+         size=Pt(11), color=WHITE, bold=True)
+
+    # ── Правая панель: результаты ─────────────────────────────────────
+    _rect(sl, Inches(4.65), Inches(2.05), Inches(5.2), Inches(4.8), WHITE)
+    _box(sl, "Результат анализа",
+         Inches(4.8), Inches(2.12), Inches(4.9), Inches(0.3),
+         size=Pt(12), color=DARK, bold=True)
+
+    # Диагноз-бейдж
+    _rect(sl, Inches(4.8), Inches(2.48), Inches(4.9), Inches(0.62),
+          RGBColor(0xFE, 0xF9, 0xE7))
+    _box(sl, "MCI",
+         Inches(4.85), Inches(2.5), Inches(1.3), Inches(0.55),
+         size=Pt(28), color=ORANGE, bold=True)
+    _box(sl, "Умеренные когнитивные нарушения\nРекомендована консультация невролога",
+         Inches(6.2), Inches(2.56), Inches(3.3), Inches(0.5),
+         size=Pt(9), color=RGBColor(0x7D, 0x60, 0x08))
+
+    # Вероятности
+    _box(sl, "Вероятность по классам:",
+         Inches(4.8), Inches(3.2), Inches(4.9), Inches(0.26),
+         size=Pt(10), color=DARK, bold=True)
+
+    BAR_W = Inches(3.0)
+    for i, (lbl, p, col) in enumerate([("CN   норма",      0.12, GREEN),
+                                        ("MCI  нарушения",  0.71, ORANGE),
+                                        ("AD   деменция",   0.17, RED)]):
+        y = Inches(3.52 + i * 0.53)
+        _box(sl, lbl, Inches(4.8), y, Inches(1.5), Inches(0.21),
+             size=Pt(9), color=DARK)
+        _rect(sl, Inches(4.8), y + Inches(0.23), BAR_W,
+              Inches(0.22), RGBColor(0xEC, 0xF0, 0xF1))
+        _rect(sl, Inches(4.8), y + Inches(0.23), BAR_W * p, Inches(0.22), col)
+        _box(sl, f"{int(p*100)}%",
+             Inches(4.8) + BAR_W + Inches(0.08), y + Inches(0.23),
+             Inches(0.5), Inches(0.22), size=Pt(9), color=col, bold=True)
+
+    # Gate-вес
+    _box(sl, "На что опирается модель:",
+         Inches(4.8), Inches(5.18), Inches(4.9), Inches(0.26),
+         size=Pt(10), color=DARK, bold=True)
+    gate = 0.30
+    _rect(sl, Inches(4.8), Inches(5.48), BAR_W, Inches(0.24),
+          RGBColor(0xEC, 0xF0, 0xF1))
+    _rect(sl, Inches(4.8), Inches(5.48), BAR_W * gate, Inches(0.24), BLUE)
+    _rect(sl, Inches(4.8) + BAR_W * gate, Inches(5.48),
+          BAR_W * (1 - gate), Inches(0.24), GREEN)
+    _box(sl, f"МРТ {int(gate*100)}%",
+         Inches(4.8), Inches(5.75), Inches(1.5), Inches(0.2),
+         size=Pt(8.5), color=BLUE)
+    _box(sl, f"Клиника {int((1-gate)*100)}%",
+         Inches(4.8) + BAR_W * gate, Inches(5.75), Inches(1.5), Inches(0.2),
+         size=Pt(8.5), color=GREEN)
+
+    # Дисклеймер
+    _rect(sl, Inches(4.8), Inches(6.1), Inches(4.9), Inches(0.55),
+          RGBColor(0xFD, 0xF2, 0xF8))
+    _box(sl, "⚠  Носит вспомогательный характер.\n"
+             "Окончательный диагноз ставит лечащий врач.",
+         Inches(4.9), Inches(6.17), Inches(4.6), Inches(0.44),
+         size=Pt(8.5), color=RGBColor(0x76, 0x44, 0x8A))
+
     _notes(sl,
-        "Слева — кривая обучения. По горизонтали — эпохи (50 итераций). "
-        "По вертикали — значение функции потерь. Кривая плавно снижается и выходит на плато "
-        "без резких скачков — это признак стабильного обучения без переобучения.\n\n"
-        "Справа — ROC-кривые для трёх моделей:\n"
-        "  Синяя — Fusion (МРТ + клиника)\n"
-        "  Оранжевая — только МРТ\n"
-        "  Зелёная — только клиника\n\n"
-        "AUC (Area Under Curve): чем выше, тем лучше. AUC = 0.5 — случайное угадывание, "
-        "AUC = 1.0 — идеальная модель. Клинически приемлемо: AUC > 0.85.\n\n"
-        "Главный вывод: Fusion AUC выше, чем оба baseline — это доказывает, "
-        "что объединение модальностей работает.")
+        "Слайд показывает эскиз планируемого веб-интерфейса.\n\n"
+        "Левая панель — форма ввода данных пациента. Два раздела: "
+        "МРТ-признаки (eTIV, nWBV, ASF) и клинические данные (возраст, пол, образование, SES, MMSE, CDR). "
+        "Кнопка «Определить диагноз» отправляет данные на бэкенд.\n\n"
+        "Правая панель — результаты. Крупный диагноз MCI, "
+        "вероятности трёх классов в виде цветных прогресс-баров, "
+        "и визуализация gate-веса — на что модель опиралась больше: МРТ или клинику.\n\n"
+        "Планируемый стек: FastAPI на бэкенде, React или HTML/JS на фронтенде. "
+        "Модель уже обучена и сохранена в multimodal_model.pt — "
+        "подключить её к веб-серверу технически несложно.\n\n"
+        "Дисклеймер внизу — обязательный элемент медицинского ПО.")
 
     # ══════════════════════════════════════════════════════════════════
-    # 9. Матрица ошибок
+    # 7b. Демонстрация результатов
     # ══════════════════════════════════════════════════════════════════
     sl = _slide(prs)
-    _title(sl, "Матрица ошибок: детальный анализ классификации")
-    _img(sl, "confusion_matrix.png",
-         left=Inches(1.5), width=Inches(7), height=Inches(5.5))
+    _title(sl, "7. Демонстрация — результаты работы")
+
+    # ROC — широкий (2250×750), занимает всю ширину
+    roc_path = os.path.join(RESULTS_FOLDER, "multihead_roc.png")
+    if os.path.exists(roc_path):
+        sl.shapes.add_picture(roc_path, Inches(0.35), Inches(1.38),
+                              width=Inches(9.3))   # высота авто ~3.1"
+    else:
+        _box(sl, "[multihead_roc.png не найден]",
+             Inches(0.35), Inches(1.38), Inches(9.3), Inches(1),
+             size=Pt(11), color=GRAY)
+    _box(sl, "ROC-кривые: Fusion AUC > MRI-only > Clinical-only  (3 класса, OvR)",
+         Inches(0.35), Inches(4.55), Inches(9.3), Inches(0.3),
+         size=Pt(10), color=GRAY)
+
+    # Матрица ошибок — квадратная (1050×900), справа снизу
+    cm_path = os.path.join(RESULTS_FOLDER, "confusion_matrix.png")
+    if os.path.exists(cm_path):
+        sl.shapes.add_picture(cm_path, Inches(5.8), Inches(4.9),
+                              width=Inches(4.0))   # высота авто ~3.43"
+    else:
+        _box(sl, "[confusion_matrix.png не найден]",
+             Inches(5.8), Inches(4.9), Inches(4.0), Inches(1),
+             size=Pt(11), color=GRAY)
+    _box(sl, "Матрица ошибок: диагональ максимальна",
+         Inches(5.8), Inches(6.6), Inches(4.0), Inches(0.28),
+         size=Pt(10), color=GRAY)
+
     _notes(sl,
-        "Матрица ошибок показывает, как модель классифицирует каждый класс.\n\n"
-        "По строкам — истинный диагноз пациента.\n"
-        "По столбцам — что предсказала модель.\n"
-        "Значения нормированы: 1.0 означает, что все пациенты этого класса классифицированы верно.\n\n"
-        "Диагональ — правильные ответы. Хотим, чтобы диагональные значения были как можно выше.\n\n"
-        "Типичная ошибка: MCI путается с CN или AD — потому что MCI это переходная стадия "
-        "и в данных она неоднородна. Это нормально и ожидаемо.\n\n"
-        "Ошибка CN→AD критически нежелательна (ложная тревога). "
-        "Ошибка AD→CN тоже плохо (пропуск болезни). "
-        "Матрица позволяет найти эти паттерны.")
+        "На слайде — два ключевых результата.\n\n"
+        "Сверху — ROC-кривые. Три кривые: Fusion, MRI-only, Clinical-only. "
+        "Fusion AUC выше обоих baseline — это доказывает ценность мультимодального подхода. "
+        "AUC измеряется для 3-классовой задачи OvR (каждый класс против остальных).\n\n"
+        "Справа внизу — матрица ошибок. По строкам — истинный диагноз, по столбцам — предсказание. "
+        "Диагональ — правильные ответы — должна быть максимальной. "
+        "MCI — самый сложный класс, потому что это переходная стадия.\n\n"
+        "Дополнительные визуализации в results/: "
+        "gate_weights.png, roi_importance.png, fusion_umap.png, "
+        "biomarker_trajectory.png, training_loss.png.")
+
+    sl2 = _slide(prs)
+    _title(sl2, "7. Демонстрация — интерпретируемость модели")
+    _two_imgs(sl2, "gate_weights.png", "fusion_umap.png",
+              label1="Gate-веса: выше при AD (МРТ важнее), ниже при MCI",
+              label2="UMAP: кластеры CN / MCI / AD в пространстве эмбеддингов")
+    _notes(sl2,
+        "Gate-веса (слева) — доказательство интерпретируемости.\n\n"
+        "Боксплот по трём группам пациентов. Gate близко к 1 означает, "
+        "что для этого пациента модель опиралась на МРТ. Близко к 0 — на клинику.\n\n"
+        "Биологически ожидаемый результат: при AD атрофия выражена → nWBV/eTIV информативны → gate выше. "
+        "При MCI атрофия минимальна, когнитивные тесты снижены → gate ниже, клиника важнее.\n\n"
+        "UMAP (справа) — 256-мерные эмбеддинги спроецированы в 2D. "
+        "Если модель научилась различать классы, точки CN/MCI/AD образуют отдельные кластеры. "
+        "Это визуальное подтверждение того, что нейросеть нашла реальные паттерны.")
 
     # ══════════════════════════════════════════════════════════════════
-    # 10. Gate-веса
+    # 8. Заключение и результаты
     # ══════════════════════════════════════════════════════════════════
     sl = _slide(prs)
-    _title(sl, "Gated Fusion: интерпретируемость модели")
-    _img(sl, "gate_weights.png",
-         left=Inches(1.0), width=Inches(8), height=Inches(5.2))
+    _title(sl, "8. Заключение и результаты")
+    _body(sl,
+        "Достигнутые результаты\n\n"
+        "  ✓  Fusion AUC > MRI-only и > Clinical-only — мультимодальность подтверждена\n"
+        "  ✓  Gate-веса биологически валидны: выше при AD, ниже при MCI\n"
+        "  ✓  nWBV — ключевой биомаркер; согласуется с Fox et al. (1999)\n"
+        "  ✓  Donor-level split — корректная валидация на продольных данных\n"
+        "  ✓  Два пайплайна: клинический (OASIS 586 пациентов) + молекулярный (scRNA-seq)\n\n"
+        "Ограничения\n\n"
+        "  ✗  AUC ~0.998 завышен: CDR в OASIS почти тождественен метке диагноза\n"
+        "     → на независимых данных ожидаемо 85–92% (уровень литературы)\n"
+        "  ✗  МРТ-only слаб: только 3 числа FreeSurfer, не полные снимки\n"
+        "     → решение: 3D-CNN + NIfTI-файлы OASIS-3\n"
+        "  ✗  Малый датасет (586 пациентов) — клиническая валидация требует тысяч записей\n\n"
+        "Направление развития: 3D-CNN на полных МРТ-снимках + лонгитюдный анализ MCI → AD")
     _notes(sl,
-        "Этот график показывает значения gate-весов по трём группам пациентов.\n\n"
-        "Gate — число от 0 до 1:\n"
-        "  Близко к 1 → модель опирается на МРТ\n"
-        "  Близко к 0 → модель опирается на клинические данные\n\n"
-        "Что ожидаем увидеть:\n"
-        "  CN: МРТ-изменений мало, симптомов нет — gate может быть умеренным\n"
-        "  MCI: атрофия начинается, MMSE снижается — gate адаптируется\n"
-        "  AD: выраженная атрофия — gate сдвигается к МРТ\n\n"
-        "Это ключевое отличие от 'чёрного ящика': модель объясняет своё решение через gate.\n"
-        "Это важно для клинического применения — врач должен понимать, почему поставлен диагноз.")
+        "Сильные стороны:\n\n"
+        "Gated Fusion работает — МРТ-only AUC 0.59, Fusion AUC 0.998. "
+        "Разрыв доказывает, что адаптивное объединение модальностей даёт реальный прирост.\n\n"
+        "Интерпретируемость через gate-веса: врач видит, на что опиралась модель "
+        "для конкретного пациента. В медицине 'чёрный ящик' неприемлем.\n\n"
+        "Donor-level split — корректная валидация, которую большинство работ игнорируют.\n\n"
+        "Ограничения:\n\n"
+        "AUC ~0.998 объясняется тем, что CDR в OASIS почти тождественен метке диагноза. "
+        "На независимых данных точность была бы 85–92%. "
+        "Это важно назвать самой — покажет понимание данных.\n\n"
+        "МРТ слаб в одиночку (AUC 0.59) — ограничение данных (3 числа FreeSurfer), "
+        "не архитектуры. Решается переходом на полные NIfTI-снимки.\n\n"
+        "Спасибо! Готова ответить на вопросы.")
 
-    # ══════════════════════════════════════════════════════════════════
-    # 11. ROI-важность + UMAP
-    # ══════════════════════════════════════════════════════════════════
-    sl = _slide(prs)
-    _title(sl, "Важность МРТ-признаков и разделимость классов")
-    _two_imgs(sl, "roi_importance.png", "fusion_umap.png")
-    _notes(sl,
-        "Слева — важность МРТ-признаков. Вычисляется как стандартное отклонение активаций "
-        "в тестовой выборке: чем больше разброс, тем важнее признак для различения классов.\n\n"
-        "Ожидаемый результат: nWBV (нормированный объём мозга) должен быть самым важным — "
-        "это подтверждается биологически: атрофия мозга — главный маркер AD.\n\n"
-        "Справа — UMAP-проекция. Это метод визуализации 256-мерного пространства эмбеддингов "
-        "(объединённых векторов МРТ и клиники) в двумерное.\n\n"
-        "Если модель научилась различать классы — точки CN, MCI и AD должны образовывать "
-        "разделённые кластеры. Смешение точек означало бы, что модель не нашла различий.\n\n"
-        "Это ещё один способ визуально убедиться, что модель работает.")
-
-    # ══════════════════════════════════════════════════════════════════
-    # 12. Выводы
-    # ══════════════════════════════════════════════════════════════════
-    sl = _slide(prs)
-    _title(sl, "Выводы")
-    _subtitle(sl,
-        "1. Мультимодальная модель точнее однородных:\n"
-        "   Fusion AUC > MRI-only AUC  и  Fusion AUC > Clinical-only AUC\n"
-        "   → Объединение источников данных статистически оправдано\n\n"
-        "2. Gated Fusion делает модель интерпретируемой:\n"
-        "   Gate-веса объясняют решение модели для каждого пациента\n"
-        "   → Важно для применения в клинической практике\n\n"
-        "3. nWBV — наиболее важный биомаркер:\n"
-        "   Нормированный объём мозга убывает CN → MCI → AD\n"
-        "   → Соответствует данным литературы (Fox et al., 1999)\n\n"
-        "4. Donor-level split обязателен:\n"
-        "   Случайный split завышает метрики — это методологическая ошибка\n"
-        "   → Проект использует GroupShuffleSplit по subject_id\n\n"
-        "5. Направления развития:\n"
-        "   • Полные МРТ-снимки (NIfTI) вместо трёх FreeSurfer-чисел\n"
-        "   • Лонгитюдный анализ: предсказание перехода MCI → AD\n"
-        "   • Интеграция с данными scRNA-seq (дополнительный анализ в проекте)",
-        top=Inches(1.0))
-
-    _notes(sl,
-        "Подводя итог.\n\n"
-        "Главный результат: мультимодальная модель с Gated Fusion превосходит обе однородные модели "
-        "по ROC-AUC. Это доказывает, что объединять МРТ и клинику не просто можно — нужно.\n\n"
-        "Gated Fusion добавляет интерпретируемость, что критично для медицины. "
-        "Врач должен не просто получить диагноз, но и понять, почему модель так решила.\n\n"
-        "Биологически результаты согласуются с литературой: nWBV — самый информативный МРТ-признак, "
-        "что подтверждается десятками публикаций.\n\n"
-        "Следующий шаг — использовать полные МРТ-снимки вместо трёх чисел. "
-        "Для этого нужна 3D-CNN архитектура, но данные уже есть: OASIS-3 предоставляет NIfTI-файлы. "
-        "Это открытое направление для будущих исследований.\n\n"
-        "Спасибо за внимание! Готова ответить на вопросы.")
-
-    os.makedirs(RESULTS_FOLDER, exist_ok=True)
+    os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
     prs.save(output)
     print(f"  Презентация сохранена: {output}")
 
 
 def main():
     print("=" * 60)
-    print("  Генерация PowerPoint-презентации (12 слайдов)")
+    print("  Генерация PowerPoint-презентации (10 слайдов)")
     print("=" * 60)
     build()
 

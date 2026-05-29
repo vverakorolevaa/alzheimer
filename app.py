@@ -100,8 +100,7 @@ with tab_dx:
     values = []
     for i, g in enumerate(genes):
         r = ref[g]
-        default = r["mean_ad"] if preset == "ad" else (
-                  r["mean_ct"] if preset == "ct" else (r["mean_ct"] + r["mean_ad"]) / 2)
+        default = r["mean_ad"] if preset == "ad" else r["mean_ct"]
         with cols[i % 3]:
             v = st.number_input(
                 f"{g}  [норма≈{r['mean_ct']}, AD≈{r['mean_ad']}]",

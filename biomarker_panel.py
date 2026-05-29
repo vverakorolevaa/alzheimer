@@ -209,14 +209,43 @@ def run_panel():
     n_known = panel_df["known_AD_gene"].sum()
     print(f"\n  Из них известных AD-генов по литературе: {n_known}/{PANEL_SIZE}")
 
+    # ── Обучение финальной модели панели (для веб-интерфейса) ──────────
+    panel_genes = [hvg_names[gi] for gi in final_idx]
+    X_panel = X[:, final_idx]
+    deploy_scaler = StandardScaler().fit(X_panel)
+    deploy_clf = LogisticRegression(max_iter=1000, class_weight="balanced",
+                                    random_state=PANEL_RANDOM_SEED)
+    deploy_clf.fit(deploy_scaler.transform(X_panel), y)
+
+    # Референсные диапазоны экспрессии для каждого гена (для подсказок в UI)
+    ref_ranges = {}
+    for rank, gi in enumerate(final_idx):
+        g = panel_genes[rank]
+        ref_ranges[g] = {
+            "min":     round(float(X[:, gi].min()), 3),
+            "max":     round(float(X[:, gi].max()), 3),
+            "mean_ct": round(float(X[y == 0, gi].mean()), 3),
+            "mean_ad": round(float(X[y == 1, gi].mean()), 3),
+        }
+
     # ── Сохранение ─────────────────────────────────────────────────────
     print("\n[3/3] Сохранение результатов")
+    import joblib
     panel_csv = os.path.join(RESULTS_FOLDER, "biomarker_panel.csv")
     panel_df.to_csv(panel_csv, index=False)
     sweep_df.to_csv(os.path.join(RESULTS_FOLDER, "panel_size_sweep.csv"), index=False)
+    joblib.dump({
+        "genes": panel_genes,
+        "scaler": deploy_scaler,
+        "clf": deploy_clf,
+        "ref_ranges": ref_ranges,
+        "cv_auc": panel_mean,
+        "cv_auc_std": panel_std,
+    }, os.path.join(RESULTS_FOLDER, "panel_model.pkl"))
     _plot(sweep_df, base_mean, panel_df, panel_mean, panel_std)
 
     print(f"  Панель:  {panel_csv}")
+    print(f"  Модель:  {os.path.join(RESULTS_FOLDER, 'panel_model.pkl')}")
     print("=" * 60)
     print(f"  ИТОГ: панель из {PANEL_SIZE} генов даёт AUC {panel_mean:.3f} "
           f"против {base_mean:.3f} у полной модели ({X.shape[1]} генов)")

@@ -91,6 +91,13 @@ def cmd_panel(args):
     biomarker_panel.main()
 
 
+# ── report ────────────────────────────────────────────────────────────
+
+def cmd_report(args):
+    import build_presentation
+    build_presentation.main()
+
+
 # ── Утилиты ───────────────────────────────────────────────────────────
 
 def _banner(title):
@@ -132,12 +139,14 @@ def main():
     sub.add_parser("download", help="Скачать scRNA-seq данные GSE138852")
     sub.add_parser("analyze",  help="DEG-анализ + классификатор + pathway enrichment")
     sub.add_parser("panel",    help="Отбор мини-панели генов-биомаркеров для ранней диагностики")
+    sub.add_parser("report",   help="Сгенерировать PowerPoint-презентацию")
 
     args = parser.parse_args()
     {
         "download": cmd_download,
         "analyze":  cmd_analyze,
         "panel":    cmd_panel,
+        "report":   cmd_report,
     }[args.command](args)
 
 

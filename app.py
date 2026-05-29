@@ -59,8 +59,10 @@ with st.sidebar:
     model = load_model()
     if model:
         st.metric("Генов в панели", len(model["genes"]))
-        st.metric("AUC (честный, донор-уровень)",
+        st.metric("ROC-AUC (площадь под кривой, 0→1)",
                   f"{model['cv_auc']:.2f} ± {model['cv_auc_std']:.2f}")
+        st.caption("ROC-AUC = вероятность того, что больной получит более высокий "
+                   "балл, чем здоровый. 1.0 = идеал, 0.5 = случайность.")
         st.caption("Данные: GSE138852 (Grubman et al., 2019), "
                    "энторинальная кора, scRNA-seq")
     else:

@@ -7,7 +7,7 @@
 
 import os
 from pptx import Presentation
-from pptx.util import Inches, Pt
+from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 
@@ -93,6 +93,110 @@ def _image_slide(prs, title, images, by="height", size=5.6):
     return s
 
 
+def _add_box(slide, x, y, w, h, bg, title, sub):
+    """Цветной блок (скруглённый прямоугольник) с заголовком и подписью."""
+    shp = slide.shapes.add_shape(5, Inches(x), Inches(y), Inches(w), Inches(h))
+    # заливка
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = bg
+    # рамка того же цвета — визуально без рамки
+    shp.line.color.rgb = bg
+    shp.line.width = Pt(0.5)
+    # текст
+    tf = shp.text_frame
+    tf.word_wrap = True
+    tf.margin_top    = Emu(120000)
+    tf.margin_bottom = Emu(60000)
+    tf.margin_left   = Emu(90000)
+    tf.margin_right  = Emu(90000)
+    p1 = tf.paragraphs[0]
+    p1.text = title
+    p1.alignment = PP_ALIGN.CENTER
+    r1 = p1.runs[0]
+    r1.font.size = Pt(14)
+    r1.font.bold = True
+    r1.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+    p2 = tf.add_paragraph()
+    p2.text = sub
+    p2.alignment = PP_ALIGN.CENTER
+    p2.space_before = Pt(4)
+    r2 = p2.runs[0]
+    r2.font.size = Pt(10)
+    r2.font.color.rgb = RGBColor(0xE8, 0xF0, 0xFF)
+
+
+def _add_arrow(slide, x, y):
+    """Стрелка между блоками."""
+    tb = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(0.38), Inches(0.4))
+    p = tb.text_frame.paragraphs[0]
+    p.text = ">"
+    p.alignment = PP_ALIGN.CENTER
+    r = p.runs[0]
+    r.font.size = Pt(26)
+    r.font.bold = True
+    r.font.color.rgb = RGBColor(0xAA, 0xAA, 0xAA)
+
+
+def _scheme_slide(prs):
+    """Визуальная функциональная схема: 5 цветных блоков + стрелки."""
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+
+    # заголовок
+    t = s.shapes.add_textbox(Inches(0.5), Inches(0.18), Inches(12.3), Inches(0.85))
+    tp = t.text_frame.paragraphs[0]
+    tp.text = "4. Функциональная схема"
+    tp.runs[0].font.size = Pt(30)
+    tp.runs[0].font.bold = True
+    tp.runs[0].font.color.rgb = ACCENT
+
+    STEPS = [
+        (RGBColor(0x29, 0x80, 0xB9),
+         "Данные",
+         "GSE63060\n329 образцов крови\n(кровь, открытые)"),
+        (RGBColor(0x27, 0xAE, 0x60),
+         "Загрузка",
+         "probe  ген\nметки CTL / MCI / AD"),
+        (RGBColor(0xD3, 0x5A, 0x00),
+         "Предобработка",
+         "log2, нормализация\nфильтр генов"),
+        (RGBColor(0x8E, 0x44, 0xAD),
+         "ПАНЕЛЬ + МОДЕЛЬ",
+         "15 генов, без утечки\nкросс-валидация + SHAP"),
+        (RGBColor(0x1A, 0x5E, 0x7A),
+         "Веб-приложение",
+         "Streamlit\nстадия + объяснение"),
+    ]
+
+    BOX_W = 2.08
+    BOX_H = 2.3
+    ARR_W = 0.30
+    N     = len(STEPS)
+    total = N * BOX_W + (N - 1) * ARR_W
+    sx    = (13.333 - total) / 2
+    BY    = 2.35
+
+    for i, (color, title, sub) in enumerate(STEPS):
+        bx = sx + i * (BOX_W + ARR_W)
+        _add_box(s, bx, BY, BOX_W, BOX_H, color, title, sub)
+        if i < N - 1:
+            _add_arrow(s, bx + BOX_W, BY + BOX_H / 2 - 0.23)
+
+    # подпись под блоком «ПАНЕЛЬ»
+    note = s.shapes.add_textbox(
+        Inches(sx + 3 * (BOX_W + ARR_W)),
+        Inches(BY + BOX_H + 0.12),
+        Inches(BOX_W), Inches(0.38))
+    np_ = note.text_frame.paragraphs[0]
+    np_.text = "Новизна проекта"
+    np_.alignment = PP_ALIGN.CENTER
+    r = np_.runs[0]
+    r.font.size = Pt(10)
+    r.font.bold = True
+    r.font.color.rgb = RGBColor(0x8E, 0x44, 0xAD)
+
+    return s
+
+
 def build():
     m = _metrics()
     prs = Presentation()
@@ -132,14 +236,7 @@ def build():
         (f"Ожидаемый результат: macro-AUC ≈ {m['macro']:.2f} (кросс-валидация).", 0),
     ])
 
-    _content_slide(prs, "4. Функциональная схема", [
-        ("Скачивание GSE63060 (series matrix + аннотация GPL6947).", 0),
-        ("Перевод зондов микрочипа в гены, метки стадий CTL/MCI/AD.", 0),
-        ("Предобработка: log2, нормализация, фильтр генов.", 0),
-        ("Отбор минимальной панели + мультиномиальная лог. регрессия.", 0),
-        ("Без утечки: отбор и масштабирование ВНУТРИ фолдов кросс-валидации.", 1),
-        ("Модель → веб-приложение (Streamlit): ввод генов → стадия + объяснение.", 0),
-    ])
+    _scheme_slide(prs)
 
     _content_slide(prs, "5. Инструменты и обоснование", [
         ("Python + scikit-learn — стандарт ML, воспроизводимо.", 0),

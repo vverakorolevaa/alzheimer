@@ -10,3 +10,4 @@ results/
 *.gz
 .env
 docs/
+legacy/

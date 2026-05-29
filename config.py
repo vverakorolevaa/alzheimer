@@ -27,37 +27,7 @@ GENE2VEC_URL = (
 GENE2VEC_DIM  = 200
 GENE2VEC_TOP  = 100
 
-# ── OASIS-3 (МРТ + клиника, диагностическое приложение) ──────────────
-OASIS_MRI_FILE      = "data/oasis/mri_features.csv"
-OASIS_CLINICAL_FILE = "data/oasis/clinical.csv"
-
-# FreeSurfer ROI-признаки (объёмы в мм³, толщина коры в мм)
-MRI_KEY_ROIS = [
-    "lh_hippocampus", "rh_hippocampus",
-    "lh_amygdala", "rh_amygdala",
-    "lh_entorhinal_thickness", "rh_entorhinal_thickness",
-    "lh_parahippocampal_thickness", "rh_parahippocampal_thickness",
-    "lh_fusiform_thickness", "rh_fusiform_thickness",
-    "lh_inferior_temporal_thickness", "rh_inferior_temporal_thickness",
-    "lh_middle_temporal_thickness", "rh_middle_temporal_thickness",
-    "lh_precuneus_thickness", "rh_precuneus_thickness",
-    "left_lateral_ventricle", "right_lateral_ventricle",
-    "third_ventricle", "total_brain_vol",
-]
-
-CLINICAL_FEATURES = ["age", "sex", "apoe4", "education_years", "mmse"]
-
-DX_LABELS = {0: "CN", 1: "MCI", 2: "AD"}
-DX_COLORS = {0: "#2ECC71", 1: "#F39C12", 2: "#E74C3C"}
-
-MULTIMODAL_EMBED_DIM = 128
-MULTIMODAL_EPOCHS    = 50
-MULTIMODAL_TEST_SIZE = 0.2
-MULTIMODAL_BATCH     = 32
-
-# ── Kaggle OASIS (реальные данные, без ограничений) ───────────────────
-KAGGLE_LONG_FILE  = "data/kaggle/oasis_longitudinal.csv"
-KAGGLE_CROSS_FILE = "data/kaggle/oasis_cross-sectional.csv"
-
-KAGGLE_MRI_COLS  = ["etiv", "nwbv", "asf"]
-KAGGLE_CLIN_COLS = ["age", "sex", "educ", "ses", "mmse"]
+# ── Мини-панель биомаркеров (отбор минимального набора генов) ─────────
+PANEL_SIZE        = 12      # сколько генов в итоговой диагностической панели
+PANEL_CV_FOLDS    = 5       # число фолдов кросс-валидации при отборе
+PANEL_RANDOM_SEED = 42

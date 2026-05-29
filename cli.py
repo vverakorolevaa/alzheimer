@@ -1,130 +1,18 @@
 """
-Alzheimer — CLI для диагностики болезни Альцгеймера.
+Alzheimer — CLI для анализа дифференциальной экспрессии генов
+при болезни Альцгеймера (scRNA-seq, GSE138852).
 
 Команды:
-  python cli.py generate-synthetic   # создать тестовые данные OASIS-3
-  python cli.py classify-oasis       # мультимодальный классификатор (МРТ + клиника)
-  python cli.py report               # сгенерировать PowerPoint-отчёт
-  python cli.py download             # скачать данные GSE138852 (исследовательский анализ)
-  python cli.py analyze              # DEG-анализ на GSE138852
+  python cli.py download    # скачать данные GSE138852 с NCBI GEO
+  python cli.py analyze     # DEG-анализ + ансамблевый классификатор + Enrichr
+  python cli.py panel       # отбор мини-панели генов-биомаркеров (новизна)
   python cli.py --help
 """
 
 import argparse
 import os
-import sys
 import warnings
 warnings.filterwarnings("ignore")
-
-
-# ── setup-kaggle ──────────────────────────────────────────────────────
-
-def cmd_setup_kaggle(args):
-    import shutil
-    from data_loader_kaggle import KaggleOASISLoader
-    from config import KAGGLE_LONG_FILE, KAGGLE_CROSS_FILE
-
-    archive = os.path.expanduser(args.archive)
-    src_long  = os.path.join(archive, "oasis_longitudinal.csv")
-    src_cross = os.path.join(archive, "oasis_cross-sectional.csv")
-
-    _banner("Настройка данных OASIS (Kaggle)")
-    loader = KaggleOASISLoader()
-    loader.copy_from_downloads(src_long, src_cross)
-    print("Готово! Запустите: python cli.py classify-kaggle")
-
-
-# ── classify-kaggle ───────────────────────────────────────────────────
-
-def cmd_classify_kaggle(args):
-    from data_loader_kaggle    import KaggleOASISLoader
-    from multimodal_classifier import MultimodalClassifier
-    from visualizer_multimodal import MultimodalVisualizer
-    from config import RESULTS_FOLDER
-
-    os.makedirs(RESULTS_FOLDER, exist_ok=True)
-    _banner("Мультимодальная диагностика AD — OASIS (Kaggle)")
-
-    print("\n[1/4] Загрузка данных")
-    loader = KaggleOASISLoader()
-    loader.load()
-    loader.print_summary()
-    X_mri, X_clin, y, groups, mri_cols, clin_cols = loader.get_feature_matrices()
-
-    print("\n[2/4] Обучение (Gated Fusion: МРТ + клиника)")
-    clf     = MultimodalClassifier()
-    metrics = clf.train(X_mri, X_clin, y, groups,
-                        mri_names=mri_cols, clin_names=clin_cols)
-
-    print("\n[3/4] Визуализация")
-    viz = MultimodalVisualizer()
-    viz.plot_training_loss(metrics["losses"])
-    viz.plot_multihead_roc(
-        metrics["y_true"], metrics["probs"],
-        metrics["probs_mri_only"], metrics["probs_clin_only"],
-    )
-    viz.plot_confusion_matrix(metrics["y_true"], metrics["preds"])
-    viz.plot_gate_weights(metrics["gates"], metrics["y_true"])
-    viz.plot_roi_importance(mri_cols, metrics["mri_importance"])
-    viz.plot_biomarker_trajectory(loader.df)
-    viz.plot_fusion_umap(metrics["embeddings"], metrics["y_true"])
-
-    print(f"\n[4/4] Accuracy: {metrics['accuracy']:.3f}  "
-          f"ROC-AUC: {metrics['roc_auc']:.3f}")
-    _done(RESULTS_FOLDER)
-
-
-# ── generate-synthetic ────────────────────────────────────────────────
-
-def cmd_generate_synthetic(args):
-    from generate_synthetic_oasis import generate
-    _banner("Генерация синтетических данных OASIS-3")
-    generate()
-    print("\nДалее запустите: python cli.py classify-oasis")
-
-
-# ── classify-oasis ────────────────────────────────────────────────────
-
-def cmd_classify_oasis(args):
-    from data_loader_oasis       import OASISLoader
-    from multimodal_classifier   import MultimodalClassifier
-    from visualizer_multimodal   import MultimodalVisualizer
-    from config import RESULTS_FOLDER
-
-    os.makedirs(RESULTS_FOLDER, exist_ok=True)
-    _banner("Мультимодальная диагностика AD: МРТ + клинические данные")
-
-    print("\n[1/4] Загрузка данных OASIS-3")
-    loader = OASISLoader()
-    loader.load()
-    loader.print_summary()
-    X_mri, X_clin, y, groups, mri_cols, clin_cols = loader.get_feature_matrices()
-
-    print("\n[2/4] Обучение мультимодальной сети (Gated Fusion)")
-    clf     = MultimodalClassifier()
-    metrics = clf.train(X_mri, X_clin, y, groups,
-                        mri_names=mri_cols, clin_names=clin_cols)
-
-    print("\n[3/4] Визуализация")
-    viz = MultimodalVisualizer()
-    viz.plot_training_loss(metrics["losses"])
-    viz.plot_multihead_roc(
-        metrics["y_true"],
-        metrics["probs"],
-        metrics["probs_mri_only"],
-        metrics["probs_clin_only"],
-    )
-    viz.plot_confusion_matrix(metrics["y_true"], metrics["preds"])
-    viz.plot_gate_weights(metrics["gates"], metrics["y_true"])
-    viz.plot_roi_importance(mri_cols, metrics["mri_importance"])
-
-    viz.plot_biomarker_trajectory(loader.df)
-    viz.plot_fusion_umap(metrics["embeddings"], metrics["y_true"])
-
-    print("\n[4/4] Результаты")
-    print(f"  Accuracy:  {metrics['accuracy']:.3f}")
-    print(f"  ROC-AUC:   {metrics['roc_auc']:.3f}")
-    _done(RESULTS_FOLDER)
 
 
 # ── download ──────────────────────────────────────────────────────────
@@ -147,7 +35,7 @@ def cmd_analyze(args):
     from config import RESULTS_FOLDER
 
     os.makedirs(RESULTS_FOLDER, exist_ok=True)
-    _banner("Исследовательский анализ scRNA-seq (GSE138852)")
+    _banner("Анализ дифференциальной экспрессии генов (GSE138852)")
 
     print("\n[1/6] Загрузка данных")
     loader = DataLoader()
@@ -196,11 +84,11 @@ def cmd_analyze(args):
     _done(RESULTS_FOLDER)
 
 
-# ── report ────────────────────────────────────────────────────────────
+# ── panel ─────────────────────────────────────────────────────────────
 
-def cmd_report(args):
-    import build_presentation
-    build_presentation.main()
+def cmd_panel(args):
+    import biomarker_panel
+    biomarker_panel.main()
 
 
 # ── Утилиты ───────────────────────────────────────────────────────────
@@ -220,7 +108,6 @@ def _print_metrics(metrics):
 def _done(folder):
     print("\n" + "=" * 60)
     print(f"  Готово! Результаты: {folder}/")
-    print("  Отчёт: python cli.py report")
     print("=" * 60)
 
 
@@ -229,46 +116,28 @@ def _done(folder):
 def main():
     parser = argparse.ArgumentParser(
         prog="alzheimer",
-        description="Мультимодальная диагностика болезни Альцгеймера",
+        description="Анализ дифференциальной экспрессии генов при болезни Альцгеймера",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Быстрый старт (реальные данные Kaggle):
-  python cli.py setup-kaggle         # скопировать файлы из Downloads
-  python cli.py classify-kaggle      # обучить и оценить модель
-  python cli.py report               # сгенерировать отчёт
-
-Исследовательский анализ (scRNA-seq):
-  python cli.py download             # скачать GSE138852
-  python cli.py analyze              # DEG + ансамблевый классификатор
+Быстрый старт:
+  python cli.py download             # скачать GSE138852 с NCBI GEO (~2 GB)
+  python cli.py analyze              # DEG + ансамблевый классификатор + Enrichr
+  python cli.py panel                # отбор мини-панели генов-биомаркеров
         """,
     )
 
     sub = parser.add_subparsers(dest="command", metavar="команда")
     sub.required = True
 
-    p_setup = sub.add_parser("setup-kaggle",
-                   help="Скопировать файлы OASIS из Downloads в data/kaggle/")
-    p_setup.add_argument("--archive", default="~/Downloads/archive",
-                         help="Папка с файлами OASIS (default: ~/Downloads/archive)")
-    sub.add_parser("classify-kaggle",
-                   help="Мультимодальный классификатор на реальных данных OASIS (Kaggle)")
-    sub.add_parser("generate-synthetic",
-                   help="Сгенерировать синтетические данные OASIS-3")
-    sub.add_parser("classify-oasis",
-                   help="Мультимодальный классификатор на синтетических данных")
-    sub.add_parser("report",   help="Сгенерировать PowerPoint-отчёт")
     sub.add_parser("download", help="Скачать scRNA-seq данные GSE138852")
-    sub.add_parser("analyze",  help="DEG-анализ на GSE138852 (исследовательский)")
+    sub.add_parser("analyze",  help="DEG-анализ + классификатор + pathway enrichment")
+    sub.add_parser("panel",    help="Отбор мини-панели генов-биомаркеров для ранней диагностики")
 
     args = parser.parse_args()
     {
-        "setup-kaggle":       cmd_setup_kaggle,
-        "classify-kaggle":    cmd_classify_kaggle,
-        "generate-synthetic": cmd_generate_synthetic,
-        "classify-oasis":     cmd_classify_oasis,
-        "report":             cmd_report,
-        "download":           cmd_download,
-        "analyze":            cmd_analyze,
+        "download": cmd_download,
+        "analyze":  cmd_analyze,
+        "panel":    cmd_panel,
     }[args.command](args)
 
 

@@ -1,29 +1,32 @@
-import scanpy as sc
+"""
+Лёгкая предобработка табличной экспрессии микрочипа (GSE63060):
+  1. при необходимости log2 (если данные в линейном масштабе);
+  2. заполнение пропусков средним по гену;
+  3. удаление генов с нулевой дисперсией.
+Масштабирование (StandardScaler) делается ПОЗЖЕ и строго внутри фолдов
+кросс-валидации — чтобы не было утечки информации из теста в трейн.
+"""
+
+import numpy as np
+import pandas as pd
 
 
 class Preprocessor:
-    """
-    Предобработка данных РНК-секвенирования.
-    
-    1. Фильтрация "плохих" клеток (слишком мало генов — брак)
-    2. Нормализация: все клетки приводятся к одному масштабу
-    3. Логарифмирование: log(x+1) — убирает перекос распределения
-    """
+    def preprocess(self, expr):
+        print("Предобработка…")
+        expr = expr.apply(pd.to_numeric, errors="coerce")
 
-    def __init__(self, min_genes=200, min_cells=3):
-        self.min_genes  = min_genes
-        self.min_cells  = min_cells
+        finite_max = np.nanmax(expr.values)
+        if finite_max > 100:
+            print(f"  значения линейные (max={finite_max:.0f}) → log2(x+1)")
+            expr = np.log2(expr.clip(lower=0) + 1)
+        else:
+            print(f"  данные уже в лог-масштабе (max={finite_max:.2f})")
 
-    def preprocess(self, adata):
-        print("Предобработка данных...")
-        print(f"  До: {adata.n_obs} клеток, {adata.n_vars} генов")
+        if expr.isna().any().any():
+            expr = expr.fillna(expr.mean(axis=0))
 
-        sc.pp.filter_cells(adata, min_genes=self.min_genes)
-        sc.pp.filter_genes(adata, min_cells=self.min_cells)
-        print(f"  После фильтрации: {adata.n_obs} клеток, {adata.n_vars} генов")
-
-        sc.pp.normalize_total(adata, target_sum=1e4)
-        sc.pp.log1p(adata)
-        print("  Нормализация и log1p — выполнено.")
-
-        return adata
+        nz = expr.var(axis=0) > 0
+        expr = expr.loc[:, nz]
+        print(f"  итог: {expr.shape[0]} образцов × {expr.shape[1]} генов")
+        return expr

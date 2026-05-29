@@ -1,76 +1,74 @@
 """
-Скачивает данные GSE138852 с базы GEO.
-Запуск: python download_data.py
+Скачивание данных GSE63060 (когорта AddNeuroMed) с NCBI GEO.
 
-Датасет: Mathys et al., Nature 2019
-80 пациентов (48 с болезнью Альцгеймера + 32 здоровых)
-Регион мозга: энторинальная кора
+Качаем два файла в data/:
+  1. GSE63060_series_matrix.txt.gz — экспрессия (probe × образец) + метаданные
+     образцов (включая диагноз CTL/MCI/AD).
+  2. GPL6947.annot.gz — аннотация платформы Illumina (probe → ген), нужна,
+     чтобы перевести зонды в названия генов.
+
+Данные открытые, без разрешений и заявок. Запуск: python cli.py download
 """
 
 import os
-import requests
-import GEOparse
+import sys
+import config
+
+# Запасные зеркала (если основной FTP-поверх-HTTPS недоступен из РФ)
+SERIES_MATRIX_ALT = [
+    config.SERIES_MATRIX_URL,
+    config.SERIES_MATRIX_URL.replace("ftp.ncbi.nlm.nih.gov", "ftp.ncbi.nih.gov"),
+]
+GPL_ANNOT_ALT = [
+    config.GPL_ANNOT_URL,
+    config.GPL_ANNOT_URL.replace("ftp.ncbi.nlm.nih.gov", "ftp.ncbi.nih.gov"),
+]
 
 
-GEO_ACCESSION = "GSE138852"
-OUTPUT_DIR    = "data"
+def _download(urls, dest):
+    """Скачать первый доступный из urls в dest (потоково, с прогрессом)."""
+    import requests
 
-COUNTS_URL = (
-    "https://www.ncbi.nlm.nih.gov/geo/download/"
-    "?acc=GSE138852&format=file&file=GSE138852_counts.csv.gz"
-)
+    if os.path.exists(dest) and os.path.getsize(dest) > 1024:
+        print(f"  уже есть: {dest} ({os.path.getsize(dest) / 1e6:.1f} МБ)")
+        return dest
 
-
-def download_metadata():
-    """Скачивает метаданные через GEOparse."""
-    print(f"Скачиваю метаданные {GEO_ACCESSION} с GEO...")
-    gse = GEOparse.get_GEO(geo=GEO_ACCESSION, destdir=OUTPUT_DIR, silent=True)
-
-    import pandas as pd
-    rows = []
-    for gsm_name, gsm in gse.gsms.items():
-        row = {"sample": gsm_name}
-        # Берём нужные поля из метаданных
-        for key in ["title", "characteristics_ch1"]:
-            val = gsm.metadata.get(key, [""])[0]
-            row[key] = val
-        rows.append(row)
-
-    meta = pd.DataFrame(rows)
-    path = os.path.join(OUTPUT_DIR, f"{GEO_ACCESSION}_metadata.csv")
-    meta.to_csv(path, index=False)
-    print(f"  Метаданные сохранены: {path}")
-    return path
-
-
-def check_counts_file():
-    """Проверяет, есть ли файл с матрицей экспрессии."""
-    path = os.path.join(OUTPUT_DIR, "GSE138852_counts.csv")
-    if os.path.exists(path):
-        print(f"  Файл counts уже есть: {path}")
-        return True
-
-    print("\nФайл GSE138852_counts.csv не найден.")
-    print("Скачайте его вручную:")
-    print("  1. Откройте: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE138852")
-    print("  2. В разделе 'Supplementary files' найдите GSE138852_counts.csv.gz")
-    print("  3. Распакуйте и положите в папку data/")
-    return False
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    last_err = None
+    for url in urls:
+        try:
+            print(f"  качаю: {url}")
+            with requests.get(url, stream=True, timeout=60) as r:
+                r.raise_for_status()
+                total = int(r.headers.get("content-length", 0))
+                done = 0
+                with open(dest, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=1 << 20):
+                        f.write(chunk)
+                        done += len(chunk)
+                        if total:
+                            pct = 100 * done / total
+                            print(f"\r    {done/1e6:6.1f}/{total/1e6:6.1f} МБ "
+                                  f"({pct:4.1f}%)", end="", flush=True)
+                print()
+            print(f"  готово: {dest} ({os.path.getsize(dest)/1e6:.1f} МБ)")
+            return dest
+        except Exception as e:               # noqa: BLE001
+            last_err = e
+            print(f"\n  не вышло ({e}), пробую следующий источник…")
+            if os.path.exists(dest):
+                os.remove(dest)
+    raise RuntimeError(f"Не удалось скачать {dest}: {last_err}")
 
 
 def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    print("=== Загрузка данных GSE138852 ===\n")
-
-    try:
-        download_metadata()
-    except Exception as e:
-        print(f"  Не удалось скачать метаданные автоматически: {e}")
-        print("  Метаданные нужно скачать вручную с GEO.")
-
-    check_counts_file()
-    print("\nГотово!")
+    print("=" * 60)
+    print(f"  Скачивание {config.GEO_ACCESSION} (AddNeuroMed, кровь) с NCBI GEO")
+    print("=" * 60)
+    _download(SERIES_MATRIX_ALT, config.SERIES_MATRIX_GZ)
+    _download(GPL_ANNOT_ALT, config.GPL_ANNOT_GZ)
+    print("\nГотово. Дальше: python cli.py panel")
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

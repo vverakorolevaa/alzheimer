@@ -142,6 +142,17 @@ with tab_dx:
     st.write("")
     st.subheader("Уровни экспрессии генов панели (log2)")
     st.caption("Заполните вручную или подставьте типичный профиль:")
+
+    with st.expander("🧬 Какие гены измеряются и за что они отвечают"):
+        st.dataframe(pd.DataFrame({
+            "ген": list(genes),
+            "за что отвечает": [GENE_INFO.get(g, "—") for g in genes],
+            "норма ≈": [f"{ref[g]['mean']['CTL']:.1f}" for g in genes],
+            "деменция ≈": [f"{ref[g]['mean']['AD']:.1f}" for g in genes],
+        }), width="stretch", hide_index=True)
+        st.caption("Все гены панели относятся к энергетическому обмену митохондрий и синтезу "
+                   "белка: при болезни Альцгеймера их экспрессия в крови в среднем снижается.")
+
     c1, c2, c3 = st.columns(3)
     if c1.button("Пример: норма", width="stretch"):
         apply_preset("CTL")
@@ -159,6 +170,8 @@ with tab_dx:
                 f"{g}  [норма≈{r['mean']['CTL']:.1f} · деменц≈{r['mean']['AD']:.1f}]",
                 min_value=float(r["min"]) - 1, max_value=float(r["max"]) + 1,
                 step=0.05, format="%.3f", key=f"g_{g}")
+            if g in GENE_INFO:
+                st.caption(GENE_INFO[g])
             values.append(v)
 
     st.divider()
@@ -199,7 +212,9 @@ with tab_dx:
             st.pyplot(contrib_bar(genes, contrib, pred_stage)); plt.close("all")
         with ct:
             df = pd.DataFrame({
-                "ген": genes, "введено": np.round(values, 2),
+                "ген": genes,
+                "за что отвечает": [GENE_INFO.get(g, "—") for g in genes],
+                "введено": np.round(values, 2),
                 "норма≈": [ref[g]["mean"]["CTL"] for g in genes],
                 "деменц≈": [ref[g]["mean"]["AD"] for g in genes],
                 "вклад": np.round(contrib, 3),

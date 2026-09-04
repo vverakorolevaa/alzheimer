@@ -11,3 +11,4 @@ results/
 .env
 .tmp/
 legacy/
+docs_local_backup/

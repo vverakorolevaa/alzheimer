@@ -114,8 +114,9 @@ ad-blood-stage/
 ├── biomarker_panel.py  — ★ отбор панели + 3-классовая модель + CV без утечки + SHAP
 ├── app.py              — Streamlit: интерфейс + персональный SHAP
 ├── build_presentation.py — сборка .pptx
-├── results/            — модель (pkl), графики (не в репозитории)
-└── docs/               — README-графики, текст доклада, описание, шпаргалка, DEPLOY
+├── make_docs.py        — сборка литературного обзора (.docx)
+├── results/            — модель (pkl) и графики; часть закоммичена для деплоя (Streamlit Cloud)
+└── docs/               — README-графики, доклад, описание проекта, литобзор, DEPLOY
 ```
 
 ## 9. Ограничения

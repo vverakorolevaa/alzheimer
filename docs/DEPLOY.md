@@ -99,7 +99,11 @@ docker run -p 8501:8501 ad-blood-stage
 
 ## Бесплатный хостинг (без своего сервера)
 
-**Streamlit Community Cloud** (share.streamlit.io): подключить GitHub-репозиторий, указать `app.py`. Внимание: нужен публичный репозиторий, а модель собирается командой `python cli.py panel` — добавьте её в шаги сборки или закоммитьте готовый `results/panel_model.pkl`.
+**Streamlit Community Cloud** (share.streamlit.io): войти через GitHub → «New app» →
+репозиторий `alzheimer`, ветка `master`, файл `app.py` → Deploy. Готовые артефакты
+(`results/panel_model.pkl`, `results/biomarker_panel.csv`, картинки) уже закоммичены —
+ничего собирать при деплое не нужно. Приватный репозиторий подходит: при входе через
+GitHub Streamlit получает к нему доступ, а ссылка на приложение будет публичной.
 
 ## Частые проблемы
 

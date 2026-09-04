@@ -11,7 +11,6 @@
 """
 
 import os
-import sys
 import config
 
 # Запасные зеркала (если основной FTP-поверх-HTTPS недоступен из РФ)
@@ -71,4 +70,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

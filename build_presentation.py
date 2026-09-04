@@ -155,7 +155,7 @@ def _scheme_slide(prs):
          "GSE63060\n329 образцов крови\n(кровь, открытые)"),
         (RGBColor(0x27, 0xAE, 0x60),
          "Загрузка",
-         "probe  ген\nметки CTL / MCI / AD"),
+         "probe → ген\nметки CTL / MCI / AD"),
         (RGBColor(0xD3, 0x5A, 0x00),
          "Предобработка",
          "log2, нормализация\nфильтр генов"),

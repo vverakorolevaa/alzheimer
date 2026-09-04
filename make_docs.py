@@ -182,11 +182,11 @@ def make_litreview():
         "Hughes C.P., Berg L., Danziger W.L. et al. (1982). A new clinical scale for the staging of dementia. British Journal of Psychiatry, 140(6), 566–572.",
         "Jack C.R., Bennett D.A., Blennow K. et al. (2018). NIA-AA research framework: toward a biological definition of Alzheimer's disease. Alzheimer's & Dementia, 14(4), 535–562.",
         "Lee T., Lee H. (2020). Prediction of Alzheimer's disease using blood gene expression data. Scientific Reports, 10, 3485.",
-        "Liu M., Zhang J., Adeli E., Shen D. (2018). Multi-modality cascaded convolutional neural networks for Alzheimer's disease diagnosis. Neuroinformatics, 16(3–4), 295–308.",
-        "Lunnon K., Sattlecker M., Furney S.J. et al. (2013). A blood gene expression marker of early Alzheimer's disease. Journal of Alzheimer's Disease, 33(2), 397–407.",
+        "Liu M., Cheng D., Wang K., Wang Y. (2018). Multi-modality cascaded convolutional neural networks for Alzheimer's disease diagnosis. Neuroinformatics, 16(3), 295–308.",
+        "Lunnon K., Sattlecker M., Furney S.J. et al. (2013). A blood gene expression marker of early Alzheimer's disease. Journal of Alzheimer's Disease, 33(3), 737–753.",
         "Lundberg S.M., Lee S.-I. (2017). A unified approach to interpreting model predictions. Advances in Neural Information Processing Systems, 30, 4765–4774.",
         "Morris J.C. (1993). The Clinical Dementia Rating (CDR): current version and scoring rules. Neurology, 43(11), 2412–2414.",
-        "Petersen R.C., Smith G.E., Waring S.C. et al. (2001). Current concepts in mild cognitive impairment. Archives of Neurology, 58(12), 1985–1992.",
+        "Petersen R.C., Doody R., Kurz A. et al. (2001). Current concepts in mild cognitive impairment. Archives of Neurology, 58(12), 1985–1992.",
         "Selkoe D.J., Hardy J. (2016). The amyloid hypothesis of Alzheimer's disease at 25 years. EMBO Molecular Medicine, 8(6), 595–608.",
         "Sims J.R., Zimmer J.A., Evans C.D. et al. (2023). Donanemab in early symptomatic Alzheimer disease: the TRAILBLAZER-ALZ 2 randomized clinical trial. JAMA, 330(6), 512–527.",
         "Spasov S., Passamonti L., Duggento A., Liò M., Toschi N. (2019). A parameter-efficient deep learning approach to predict conversion from mild cognitive impairment to Alzheimer's disease. NeuroImage, 189, 276–287.",
@@ -194,7 +194,7 @@ def make_litreview():
         "van Dyck C.H., Swanson C.J., Aisen P. et al. (2023). Lecanemab in early Alzheimer's disease. New England Journal of Medicine, 388(21), 2023–2034.",
         "Varoquaux G. (2018). Cross-validation failure: small sample sizes lead to large error bars. NeuroImage, 180, 68–77.",
         "World Health Organization (2023). Dementia: key facts. WHO [Электронный ресурс].",
-        "Zhang D., Wang Y., Zhou L., Yuan H., Shen D. (2011). Multimodal classification of Alzheimer's disease and mild cognitive impairment. NeuroImage, 55(2), 856–867.",
+        "Zhang D., Wang Y., Zhou L., Yuan H., Shen D. (2011). Multimodal classification of Alzheimer's disease and mild cognitive impairment. NeuroImage, 55(3), 856–867.",
     ]
     for i, ref in enumerate(refs, 1):
         _para(doc, f"{i}. {ref}", size=11)

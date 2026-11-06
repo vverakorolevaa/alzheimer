@@ -1,11 +1,14 @@
 """
-Скачивание данных GSE63060 (когорта AddNeuroMed) с NCBI GEO.
+Скачивание данных GSE63060 и GSE63061 (когорта AddNeuroMed) с NCBI GEO.
 
-Качаем два файла в data/:
+Основной датасет GSE63060 — два файла в data/:
   1. GSE63060_series_matrix.txt.gz — экспрессия (probe × образец) + метаданные
      образцов (включая диагноз CTL/MCI/AD).
   2. GPL6947.annot.gz — аннотация платформы Illumina (probe → ген), нужна,
      чтобы перевести зонды в названия генов.
+
+Для внешней проверки так же качаются GSE63061 и аннотация GPL10558
+(другой чип — Illumina HumanHT-12 v4).
 
 Данные открытые, без разрешений и заявок. Запуск: python cli.py download
 """
@@ -22,6 +25,10 @@ GPL_ANNOT_ALT = [
     config.GPL_ANNOT_URL,
     config.GPL_ANNOT_URL.replace("ftp.ncbi.nlm.nih.gov", "ftp.ncbi.nih.gov"),
 ]
+
+
+def _mirrors(url):
+    return [url, url.replace("ftp.ncbi.nlm.nih.gov", "ftp.ncbi.nih.gov")]
 
 
 def _download(urls, dest):
@@ -66,6 +73,9 @@ def main():
     print("=" * 60)
     _download(SERIES_MATRIX_ALT, config.SERIES_MATRIX_GZ)
     _download(GPL_ANNOT_ALT, config.GPL_ANNOT_GZ)
+    print(f"\nВнешняя когорта {config.EXT_ACCESSION} (другой чип, для проверки):")
+    _download(_mirrors(config.EXT_SERIES_MATRIX_URL), config.EXT_SERIES_MATRIX_GZ)
+    _download(_mirrors(config.EXT_GPL_ANNOT_URL), config.EXT_GPL_ANNOT_GZ)
     print("\nГотово. Дальше: python cli.py panel")
 
 

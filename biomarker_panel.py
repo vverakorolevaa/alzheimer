@@ -1,25 +1,27 @@
 """
 Мини-панель генов крови для СТАДИЙНОЙ диагностики болезни Альцгеймера.
 
-НОВИЗНА
--------
+ИДЕЯ
+----
 Из ~17 000 генов транскриптома крови мы отбираем МИНИМАЛЬНУЮ панель из
 config.PANEL_SIZE генов, которая различает ТРИ стадии: норма (CTL) →
 умеренные когнитивные нарушения (MCI, промежуточная стадия) → деменция (AD).
-Маленькую панель реально поставить на дешёвый клинический тест (qPCR) и
-применять для СКРИНИНГА по крови — то есть у живого пациента, в терапевтическом
-окне MCI, пока болезнь ещё можно затормозить.
+Маленькую панель в перспективе можно перенести на дешёвый тест (qPCR) —
+для этого потребуется отдельная калибровка, потому что модель обучена на
+значениях конкретного микрочипа (Illumina HumanHT-12 v3).
 
-ЧЕСТНОСТЬ ВАЛИДАЦИИ (главная методологическая сила)
----------------------------------------------------
+ВАЛИДАЦИЯ БЕЗ УТЕЧКИ ДАННЫХ
+---------------------------
 Отбор генов и масштабирование выполняются СТРОГО ВНУТРИ каждого фолда
 кросс-валидации — только на обучающей части. Если отбирать гены на всех
 данных сразу (наивный подход), информация из теста «протекает» в обучение и
-качество завышается. Мы показываем оба числа (наивное vs честное), чтобы
-было видно величину утечки.
+качество завышается. Мы показываем оба числа (наивное и без утечки), чтобы
+было видно величину утечки. Важно: близость этих чисел говорит только о том,
+что утечка при отборе генов мала. Обобщаемость на новых людях проверяется
+отдельно — на независимой когорте (external_validation.py).
 
-ЧЕСТНОСТЬ ВЫВОДОВ
-----------------
+ВЫВОДЫ ПО СТАДИЯМ
+-----------------
 MCI — объективно трудная промежуточная стадия (в литературе AUC ~0.55–0.80).
 Мы приводим МЕТРИКИ ПО КАЖДОМУ КЛАССУ и не прячем, что MCI распознаётся хуже.
 
@@ -45,8 +47,10 @@ from config import (RESULTS_FOLDER, STAGES, STAGE_CODE, STAGE_RU_SHORT, STAGE_CO
                     PANEL_SIZE, PANEL_SIZE_SWEEP, PREFILTER_HVG,
                     CV_FOLDS, CV_REPEATS, PANEL_RANDOM_SEED)
 
-# Гены, надёжно ассоциированные с болезнью Альцгеймера по литературе —
-# только для биологической интерпретации найденной панели (не для отбора).
+# Гены, которые упоминаются в литературе по болезни Альцгеймера: часть найдена
+# в генетических исследованиях (APOE, TREM2…), часть — как маркеры экспрессии
+# в крови или мозге (NDUFA1, COX7C…). Только для подписи на графике, в отборе
+# генов этот список не участвует.
 KNOWN_AD_GENES = {
     "APOE", "APP", "PSEN1", "PSEN2", "MAPT", "CLU", "BIN1", "PICALM", "CR1",
     "ABCA7", "TREM2", "CD33", "SORL1", "INPP5D", "MEF2C", "PLCG2", "SPP1",
@@ -71,7 +75,7 @@ def _select_topk(X_tr, y_tr, k):
 def _cv_metrics(X, y, k, naive=False):
     """
     Повторная стратифицированная CV для панели размера k.
-    naive=False — честно (отбор внутри фолдов); naive=True — с утечкой.
+    naive=False — без утечки (отбор внутри фолдов); naive=True — с утечкой.
     Возвращает агрегаты (среднее±std по повторам) + OOF/confusion с послед. повтора.
     """
     n_cls = len(STAGES)
@@ -133,7 +137,7 @@ def run_panel():
     os.makedirs(RESULTS_FOLDER, exist_ok=True)
     print("=" * 64)
     print("  Мини-панель генов крови для СТАДИЙНОЙ диагностики AD")
-    print("  (норма → MCI → деменция; честная валидация без утечки)")
+    print("  (норма → MCI → деменция; валидация без утечки данных)")
     print("=" * 64)
 
     # ── Данные ─────────────────────────────────────────────────────────
@@ -152,8 +156,8 @@ def run_panel():
     X, hvg_names = X_all[:, hvg], gene_names_all[hvg]
     print(f"Предфильтр HVG: {X.shape[1]} самых вариабельных генов\n")
 
-    # ── [1/4] Свип: качество vs размер панели (честная CV) ─────────────
-    print("[1/4] Зависимость качества от размера панели (честная CV):")
+    # ── [1/4] Свип: качество vs размер панели (CV без утечки) ─────────────
+    print("[1/4] Зависимость качества от размера панели (CV без утечки):")
     sweep = []
     for k in PANEL_SIZE_SWEEP:
         if k > X.shape[1]:
@@ -168,7 +172,7 @@ def run_panel():
     base = _cv_metrics(X, y, X.shape[1])
     print(f"  Все {X.shape[1]} HVG (базлайн): macro-AUC={base['macro_auc'][0]:.3f}")
 
-    # ── [2/4] Итоговая панель: честные метрики + контраст с наивным ────
+    # ── [2/4] Итоговая панель: метрики без утечки + контраст с наивным ──
     print(f"\n[2/4] Итоговая панель из {PANEL_SIZE} генов:")
     honest = _cv_metrics(X, y, PANEL_SIZE, naive=False)
     naive  = _cv_metrics(X, y, PANEL_SIZE, naive=True)
@@ -177,9 +181,13 @@ def run_panel():
     pc_pt = roc_auc_score(y, oof, multi_class="ovr", average=None)
     per_class_pt = {s: float(pc_pt[ci]) for ci, s in enumerate(STAGES)}
     macro_ci, per_class_ci = _bootstrap_ci(y, oof)
-    print(f"  Честный macro-AUC: {macro_pt:.3f}  (95% ДИ {macro_ci[0]:.3f}–{macro_ci[1]:.3f})")
+    print(f"  macro-AUC без утечки: среднее по {CV_REPEATS} повторам "
+          f"{honest['macro_auc'][0]:.3f} ± {honest['macro_auc'][1]:.3f}")
+    print(f"  последний повтор: {macro_pt:.3f}  (95% ДИ {macro_ci[0]:.3f}–{macro_ci[1]:.3f}) "
+          f"— по нему ДИ, AUC по классам и матрица ошибок")
     print(f"  Наивный macro-AUC (отбор на всех данных): {naive['macro_auc'][0]:.3f}"
-          f"  → почти совпадает ⇒ утечки/переобучения нет")
+          f"  → почти совпадает ⇒ утечка при отборе генов мала "
+          f"(обобщаемость проверяется на GSE63061)")
     print(f"  macro-F1: {honest['macro_f1'][0]:.3f}   balanced-acc: {honest['bal_acc'][0]:.3f}")
     print("  AUC по классам (one-vs-rest, 95% ДИ):")
     for s in STAGES:
@@ -196,6 +204,23 @@ def run_panel():
         sel[_select_topk(X[tr], y[tr], PANEL_SIZE)] += 1
 
     panel_genes = [str(hvg_names[i]) for i in final_idx]
+
+    # насколько гены панели дублируют друг друга
+    Xp = X[:, final_idx]
+    corr = np.corrcoef(Xp.T)
+    med_corr = float(np.median(corr[np.triu_indices(len(final_idx), 1)]))
+    from sklearn.decomposition import PCA
+    pc1_var = float(PCA().fit(StandardScaler().fit_transform(Xp)).explained_variance_ratio_[0])
+    print(f"\n  Связь генов панели: медианная корреляция {med_corr:.2f}, "
+          f"первая главная компонента объясняет {pc1_var*100:.0f}% разброса —\n"
+          f"  гены почти дублируют друг друга (один общий сигнал), поэтому "
+          f"коэффициенты отдельных генов\n  нужно читать осторожно.")
+    mono = sum(1 for gi in final_idx
+               if X[y == 0, gi].mean() > X[y == 1, gi].mean() > X[y == 2, gi].mean())
+    print(f"  Строго норма > MCI > деменция: {mono} из {PANEL_SIZE} генов; "
+          f"ниже нормы и при MCI, и при деменции: "
+          f"{sum(1 for gi in final_idx if X[y == 0, gi].mean() > max(X[y == 1, gi].mean(), X[y == 2, gi].mean()))}"
+          f" из {PANEL_SIZE}.")
     rows = []
     for rank, gi in enumerate(final_idx, 1):
         g = str(hvg_names[gi])
@@ -209,7 +234,7 @@ def run_panel():
             "known_AD_gene": g in KNOWN_AD_GENES,
         })
     panel_df = pd.DataFrame(rows)
-    print(f"\n  Состав панели (из них известных AD-генов: "
+    print(f"\n  Состав панели (из них упоминаются в литературе по AD: "
           f"{int(panel_df['known_AD_gene'].sum())}/{PANEL_SIZE}):")
     print(panel_df.to_string(index=False))
 
@@ -226,6 +251,10 @@ def run_panel():
         }
     metrics = {
         "macro_auc": macro_pt, "macro_auc_ci": list(macro_ci),
+        "macro_auc_mean_repeats": honest["macro_auc"][0],
+        "macro_auc_std_repeats": honest["macro_auc"][1],
+        "panel_median_corr": med_corr, "panel_pc1_var": pc1_var,
+        "n_monotonic": int(mono),
         "macro_auc_naive": naive["macro_auc"][0],
         "macro_f1": honest["macro_f1"], "bal_acc": honest["bal_acc"],
         "per_class_auc": per_class_pt,
@@ -250,7 +279,7 @@ def run_panel():
     _plot_shap(clf, scaler.transform(X_panel), panel_genes)
 
     print("\n" + "=" * 64)
-    print(f"  ИТОГ: панель {PANEL_SIZE} генов, честный macro-AUC {macro_pt:.3f} "
+    print(f"  ИТОГ: панель {PANEL_SIZE} генов, macro-AUC без утечки {macro_pt:.3f} "
           f"(95% ДИ {macro_ci[0]:.2f}–{macro_ci[1]:.2f}).")
     print(f"  Модель: {os.path.join(RESULTS_FOLDER, 'panel_model.pkl')}")
     print("=" * 64)
@@ -266,7 +295,7 @@ def _plot_panel(sweep_df, base_auc, panel_df, clf, genes, macro_pt, macro_ci):
     ax.axhline(base_auc, color="#27AE60", ls="--", lw=1.5, label=f"Все HVG ({base_auc:.3f})")
     ax.axvline(PANEL_SIZE, color="#E74C3C", ls=":", lw=1.5, label=f"Выбрано: {PANEL_SIZE}")
     ax.set_xscale("log"); ax.set_xlabel("Число генов в панели")
-    ax.set_ylabel("macro ROC-AUC (честная CV)")
+    ax.set_ylabel("macro ROC-AUC (CV без утечки)")
     ax.set_title("Качество диагностики vs размер панели", fontweight="bold")
     ax.legend(fontsize=9); ax.grid(alpha=0.3)
 
@@ -281,7 +310,7 @@ def _plot_panel(sweep_df, base_auc, panel_df, clf, genes, macro_pt, macro_ci):
     ax.set_xlabel("Важность (средний |коэффициент| ЛР)")
     ax.set_title(f"Панель из {PANEL_SIZE} генов (macro-AUC {macro_pt:.2f}, "
                  f"95% ДИ {macro_ci[0]:.2f}–{macro_ci[1]:.2f})\n"
-                 "цвет — стадия с пиком экспрессии;  * — известный AD-ген",
+                 "цвет — стадия с пиком экспрессии;  * — упоминается в литературе по AD",
                  fontweight="bold", fontsize=10)
     ax.grid(alpha=0.3, axis="x")
     plt.tight_layout()
@@ -299,7 +328,7 @@ def _plot_metrics(oof, y, cm, per_class_ci):
     ax.set_xticks(range(3)); ax.set_xticklabels(names)
     ax.set_yticks(range(3)); ax.set_yticklabels(names)
     ax.set_xlabel("Предсказано"); ax.set_ylabel("Истинно")
-    ax.set_title("Матрица ошибок (честная CV)", fontweight="bold")
+    ax.set_title("Матрица ошибок (CV без утечки)", fontweight="bold")
     for i in range(3):
         for j in range(3):
             ax.text(j, i, f"{cmn[i, j]*100:.0f}%\n({cm[i, j]})", ha="center", va="center",

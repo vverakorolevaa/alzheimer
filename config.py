@@ -43,11 +43,18 @@ CV_FOLDS          = 5       # фолдов в стратифицированно
 CV_REPEATS        = 5       # повторов CV для доверительных интервалов (95% ДИ)
 PANEL_RANDOM_SEED = 42
 
-# ── Наследие: GSE138852 (scRNA-seq, мозг) — архив в legacy/ ────────────
-# Оставлено для совместимости со старыми (заархивированными) скриптами.
-DATA_FILE = "data/GSE138852_counts.csv"
-META_FILE = "data/GSE138852_metadata.csv"
-CONDITION_COL = "oupSample.batchCond"
-CELL_TYPE_COL = "oupSample.cellType"
-DISEASE_LABEL = "AD"
-CONTROL_LABEL = "ct"
+# ── Внешняя проверка: GSE63061 (AddNeuroMed, партия 2, другой чип) ─────
+# Другие люди и другая версия чипа (Illumina HumanHT-12 v4) — настоящая
+# проверка того, что модель работает не только на данных, где её обучали.
+EXT_ACCESSION        = "GSE63061"
+EXT_PLATFORM         = "GPL10558"   # Illumina HumanHT-12 V4.0
+EXT_SERIES_MATRIX_GZ = "data/GSE63061_series_matrix.txt.gz"
+EXT_GPL_ANNOT_GZ     = "data/GPL10558.annot.gz"
+EXT_SERIES_MATRIX_URL = (
+    "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE63nnn/GSE63061/matrix/"
+    "GSE63061_series_matrix.txt.gz"
+)
+EXT_GPL_ANNOT_URL = (
+    "https://ftp.ncbi.nlm.nih.gov/geo/platforms/GPL10nnn/GPL10558/annot/"
+    "GPL10558.annot.gz"
+)

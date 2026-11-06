@@ -9,5 +9,3 @@ plotly
 joblib==1.6.0
 shap>=0.44
 requests
-python-pptx
-python-docx
